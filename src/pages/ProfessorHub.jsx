@@ -184,9 +184,9 @@ export default function ProfessorHub(){
 
   if(alunos.length===0){
     return (
-      <div className="max-w-2xl mx-auto mt-8 bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
-        <h2 className="font-bold text-amber-900">Turma {turmaAtiva} sem alunos</h2>
-        <p className="text-sm text-amber-700 mt-1">A turma não tem alunos cadastrados. Coordenação precisa importar CSV.</p>
+      <div className="max-w-2xl mx-auto mt-8 bg-white rounded-2xl border border-slate-200 p-8 text-center">
+        <h2 className="font-bold text-slate-900">Turma sem alunos no momento</h2>
+        <p className="text-sm text-slate-500 mt-1">Nenhum aluno cadastrado para <strong>{turmaAtiva}</strong>.</p>
       </div>
     )
   }
@@ -365,11 +365,9 @@ export default function ProfessorHub(){
             </div>
           </div>
 
-          <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 text-sm text-sky-900 flex gap-3">
-            <span className="text-lg">💡</span>
-            <div>Seu progresso é salvo automaticamente. Ao concluir todas as turmas, use <strong>Exportar tudo</strong> no topo. Dúvidas? Fale com a coordenação.
-              <div className="mt-2 text-xs text-sky-700">Turmas: {prof.turmas.join(' • ')} • Componente: {prof.componente}</div>
-            </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 flex items-center justify-between text-xs text-slate-500">
+            <span>Turmas: {prof.turmas.join(' • ')} • {prof.componente}</span>
+            <span className="hidden sm:inline">Salvo automaticamente</span>
           </div>
         </div>
       </div>

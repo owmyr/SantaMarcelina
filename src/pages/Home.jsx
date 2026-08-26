@@ -50,19 +50,19 @@ export default function Home() {
 
       <div className="grid md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-6 border border-slate-200">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-3">👩‍🏫</div>
-          <h3 className="font-semibold text-slate-900">1. Coordenação cadastra</h3>
-          <p className="text-sm text-slate-500 mt-1">Importe alunos via CSV. Crie <strong>1 professor = 1 link</strong> para TODAS as turmas dele. Ou gere 21 links agregados por componente.</p>
+          <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center mb-3 text-sky-700">👩‍🏫</div>
+          <h3 className="font-semibold text-slate-900">1. Coordenação organiza</h3>
+          <p className="text-sm text-slate-500 mt-1">Cadastre turmas, alunos e professores. Cada professor recebe <strong>1 link único</strong> para todas as turmas.</p>
         </div>
         <div className="bg-white rounded-2xl p-6 border border-slate-200">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-3">✏️</div>
-          <h3 className="font-semibold text-slate-900">2. Professor com 1 link</h3>
-          <p className="text-sm text-slate-500 mt-1">Abre 1 único link, alterna turmas por abas no topo. Avalia com <span className="inline-flex gap-1"><span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded text-xs">Sim</span><span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-xs">Parcial</span><span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-xs">Não</span></span> + observações 280 chars.</p>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-3 text-emerald-700">✏️</div>
+          <h3 className="font-semibold text-slate-900">2. Professor avalia</h3>
+          <p className="text-sm text-slate-500 mt-1">Acesso direto ao hub, navegação por turmas e avaliação com <span className="inline-flex gap-1 align-middle"><span className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded text-xs">Sim</span><span className="bg-amber-50 border border-amber-200 text-amber-700 px-1.5 py-0.5 rounded text-xs">Parcial</span><span className="bg-red-50 border border-red-200 text-red-700 px-1.5 py-0.5 rounded text-xs">Não</span></span> — sincronizado em tempo real.</p>
         </div>
         <div className="bg-white rounded-2xl p-6 border border-slate-200">
-          <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center mb-3">📊</div>
-          <h3 className="font-semibold text-slate-900">3. Geral organizado</h3>
-          <p className="text-sm text-slate-500 mt-1">Matriz aluno×componente com filtros, cores por gravidade e export GERAL.csv pronto para conselho.</p>
+          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center mb-3 text-slate-700">📊</div>
+          <h3 className="font-semibold text-slate-900">3. Coordenação acompanha</h3>
+          <p className="text-sm text-slate-500 mt-1">Painel Geral por turma com visão geral, cores por desempenho e exportação pronta.</p>
         </div>
       </div>
 
@@ -90,20 +90,9 @@ export default function Home() {
               <div className="text-[11px] text-slate-400 mt-2">{componentes.length} componentes • {turmas.length} turmas cada</div>
             </div>
           </div>
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2">
-            <span className="text-amber-600">⚠️</span>
-            <div className="text-xs text-amber-800"><strong>Campos agora Sim/Não/Parcial:</strong> Em vez de “X” genérico, o professor avalia cada item com Sim (adequado, verde), Parcial (em desenvolvimento, amarelo) ou Não (atenção, vermelho). Legados como “BAIXO/REGULAR” são convertidos automaticamente.</div>
+          <div className="mt-5 flex justify-center">
+            <Link to="/admin" className="text-sm bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-black">Gerenciar professores e links →</Link>
           </div>
-          <div className="mt-4 text-center">
-            <Link to="/admin" className="text-sm text-sky-600 hover:text-sky-700 font-medium">Gerenciar professores e links →</Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
-        <span className="text-xl">💡</span>
-        <div className="text-sm text-amber-900">
-          <strong>Dica para 28/09:</strong> Mesmo sem backend, o fluxo já funciona: professor preenche e clica em “Exportar”. Ele te envia o arquivo de volta pelo Teams e você importa em Geral. Na Fase 2 isso será automático em tempo real.
         </div>
       </div>
     </div>

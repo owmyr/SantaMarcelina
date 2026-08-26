@@ -103,18 +103,17 @@ export default function Professor() {
       <div className="max-w-md mx-auto mt-12 bg-white rounded-2xl border border-red-200 p-8 text-center">
         <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">🔒</div>
         <h2 className="font-bold text-slate-900">Acesso restrito</h2>
-        <p className="text-sm text-slate-500 mt-1">Token inválido para <strong>{turma} • {componente}</strong>. Verifique o link enviado pela coordenação no Teams.</p>
-        <p className="text-xs text-slate-400 mt-3">Dica coordenação: senha atual é <code className="bg-slate-100 px-1 rounded">{config.senha}</code></p>
+        <p className="text-sm text-slate-500 mt-1">Token inválido para <strong>{turma} • {componente}</strong>. Verifique o link enviado pela coordenação.</p>
       </div>
     )
   }
 
   if(alunos.length===0){
     return (
-      <div className="max-w-2xl mx-auto mt-8 bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
-        <h2 className="font-bold text-amber-900">Turma sem alunos</h2>
-        <p className="text-sm text-amber-700 mt-1">A turma <strong>{turma}</strong> não tem alunos cadastrados. Peça para coordenação importar o CSV.</p>
-        <Link to="/admin" className="mt-4 inline-block bg-amber-600 text-white px-4 py-2 rounded-xl text-sm">Abrir Coordenação</Link>
+      <div className="max-w-2xl mx-auto mt-8 bg-white rounded-2xl border border-slate-200 p-8 text-center">
+        <h2 className="font-bold text-slate-900">Turma sem alunos no momento</h2>
+        <p className="text-sm text-slate-500 mt-1">Nenhum aluno cadastrado para <strong>{turma}</strong> no momento.</p>
+        <Link to="/admin" className="mt-4 inline-block bg-slate-900 text-white px-4 py-2 rounded-xl text-sm">Ir para coordenação</Link>
       </div>
     )
   }
@@ -147,9 +146,8 @@ export default function Professor() {
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={()=>handleExport('csv')} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700">📥 Exportar CSV + JSON</button>
-          <button onClick={()=>handleExport('xlsx')} className="bg-white border border-slate-300 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50">Exportar XLSX</button>
-          <button onClick={()=>setShowResumo(!showResumo)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-black">{showResumo?'Ocultar resumo':'Ver resumo'}</button>
+          <button onClick={()=>handleExport('csv')} className="bg-white border border-slate-300 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50">Exportar</button>
+          <button onClick={()=>setShowResumo(!showResumo)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-black">{showResumo?'Ocultar resumo':'Resumo'}</button>
         </div>
       </div>
 
@@ -288,12 +286,9 @@ export default function Professor() {
             </div>
           </div>
 
-          <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 text-sm text-sky-900 flex gap-3">
-            <span className="text-lg">💡</span>
-            <div>
-              <strong>Professor:</strong> ao finalizar todos os alunos, clique em <em>Exportar CSV + JSON</em> e envie o arquivo no Teams da sua série. A coordenação junta automaticamente no painel Geral. Dúvidas? Fale com a coordenação.
-              <div className="mt-2 text-xs text-sky-700">Atalhos: <kbd className="bg-white border px-1 rounded">←</kbd> <kbd className="bg-white border px-1 rounded">→</kbd> para navegar</div>
-            </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 flex items-center justify-between text-xs text-slate-500">
+            <span>Atalhos: <kbd className="bg-white border px-1.5 py-0.5 rounded">←</kbd> <kbd className="bg-white border px-1.5 py-0.5 rounded">→</kbd> para navegar entre alunos</span>
+            <span className="hidden sm:inline">Progresso salvo automaticamente</span>
           </div>
         </div>
       </div>

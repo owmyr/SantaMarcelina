@@ -258,16 +258,15 @@ export default function Geral(){
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Geral — Visão Consolidada</h1>
-          <p className="text-sm text-slate-500">Junção automática dos 6×21 formulários. UX que o Excel nunca deu.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Painel Geral</h1>
+          <p className="text-sm text-slate-500">Acompanhe por turma, componente e desempenho — com atualização em tempo real.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <label className="bg-sky-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-sky-700 cursor-pointer">
-            📤 Importar retornos (CSV/JSON)
+          <label className="bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 cursor-pointer">
+            Importar dados
             <input type="file" accept=".csv,.json" multiple onChange={handleImport} className="hidden" />
           </label>
-          <button onClick={()=>exportGeralCSV(respostas.filter(r=> !filtroTri || r.trimestre===filtroTri), alunos, turmas, componentes, filtroTri, `GERAL - PRE CONSELHO ${filtroTri}.csv`)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-700">📥 Exportar GERAL CSV</button>
-          <button onClick={()=>{ const filtered = respostas.filter(r=> !filtroTri || r.trimestre===filtroTri); exportToXLSX(filtered, `GERAL - PRE CONSELHO ${filtroTri}.xlsx`); }} className="bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50">Exportar XLSX</button>
+          <button onClick={()=>exportGeralCSV(respostas.filter(r=> !filtroTri || r.trimestre===filtroTri), alunos, turmas, componentes, filtroTri, `GERAL - PRE CONSELHO ${filtroTri}.csv`)} className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-black">Exportar</button>
         </div>
       </div>
 
@@ -340,7 +339,7 @@ export default function Geral(){
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredAlunos.length===0 ? <tr><td colSpan={compsToShow.length+1} className="px-4 py-12 text-center text-slate-400">Nenhum aluno. Importe CSVs em Coordenação.</td></tr> :
+                {filteredAlunos.length===0 ? <tr><td colSpan={compsToShow.length+1} className="px-4 py-12 text-center text-slate-400">Nenhum aluno encontrado para os filtros atuais.</td></tr> :
                   alunosPaginados.map(a=>{
                     return (
                       <tr key={a.id} className="hover:bg-slate-50">

@@ -475,8 +475,8 @@ export default function Admin() {
                   <option value="todas">Todas turmas</option>
                   {turmas.map(t=> <option key={t.nome} value={t.nome}>{t.nome}</option>)}
                 </select>
-                <label className="bg-sky-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-sky-700 cursor-pointer">
-                  Importar CSV
+                <label className="bg-white border border-slate-300 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 cursor-pointer">
+                  Importar planilha
                   <input type="file" accept=".csv" onChange={handleFileImport} className="hidden" />
                 </label>
               </div>
@@ -512,7 +512,7 @@ export default function Admin() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredAlunos.length===0 ? <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400">Nenhum aluno. Importe o CSV do 1A ou 3A.</td></tr> : filteredAlunos.map(a=> (
+                      {filteredAlunos.length===0 ? <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400">Nenhum aluno cadastrado.</td></tr> : filteredAlunos.map(a=> (
                         <tr key={a.id} className="hover:bg-slate-50">
                           <td className="px-4 py-2 font-medium">{a.turma}</td>
                           <td className="px-4 py-2">{a.numero}</td>
@@ -554,8 +554,8 @@ export default function Admin() {
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h3 className="font-semibold text-slate-900 mb-3">📦 Mock Data — Teste sem CSVs reais</h3>
-            <p className="text-sm text-slate-500 mb-3">Gere automaticamente alunos fictícios para as 6 turmas e <strong>1 professor por matéria (21)</strong> com todas as turmas, como solicitado. Ideal para testar UX antes dos professores enviarem dados reais.</p>
+            <h3 className="font-semibold text-slate-900 mb-3">Dados de teste</h3>
+            <p className="text-sm text-slate-500 mb-3">Gere automaticamente alunos e professores para testar o fluxo antes da operação real.</p>
             <div className="flex flex-wrap gap-3">
               <button onClick={()=>{
                 const r = gerarMockAlunosPorTurma()
@@ -600,7 +600,7 @@ export default function Admin() {
                 }
               }} className="text-sm text-red-600 border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50">🗑️ Limpar tudo</button>
             </div>
-            <p className="text-xs text-slate-500 mt-3">Os dados são gerados localmente no seu navegador (localStorage). Quando os professores começarem a enviar via links, os dados reais substituirão o mock. CSVs reais ainda podem ser importados via aba “Turmas & Alunos” → Importar CSV.</p>
+            <p className="text-xs text-slate-500 mt-3">Dados ficam salvos localmente até a sincronização com o servidor.</p>
             <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
               <div className="text-xs font-semibold text-slate-700">Estado atual:</div>
               <div className="text-xs text-slate-600 mt-1 flex flex-wrap gap-2">
@@ -612,15 +612,16 @@ export default function Admin() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h3 className="font-semibold text-slate-900 mb-2">📄 Importar CSV real (quando tiver)</h3>
-            <p className="text-sm text-slate-500 mb-3">Se receber CSVs legados, importe aqui. O sistema detecta turma pelo nome do arquivo e converte valores como BAIXO/REGULAR para Sim/Não/Parcial.</p>
-            <label className="bg-white border border-slate-300 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 cursor-pointer inline-block">
-              Importar CSV legado
-              <input type="file" accept=".csv" onChange={handleFileImport} className="hidden" />
-            </label>
-            <span className="text-xs text-slate-400 ml-3">Também disponível em “Turmas & Alunos”</span>
-          </div>
+          <details className="bg-white rounded-2xl border border-slate-200 p-6">
+            <summary className="font-semibold text-slate-900 cursor-pointer">Opções avançadas</summary>
+            <div className="mt-4">
+              <label className="bg-white border border-slate-300 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 cursor-pointer inline-block">
+                Importar planilha
+                <input type="file" accept=".csv" onChange={handleFileImport} className="hidden" />
+              </label>
+              <span className="text-xs text-slate-400 ml-3">Compatível com exportações anteriores</span>
+            </div>
+          </details>
         </div>
       )}
     </div>
