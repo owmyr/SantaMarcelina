@@ -3,6 +3,18 @@ import { getTurmas, setTurmas, getComponentes, setComponentes, getAlunos, setAlu
 import { gerarMockAlunosPorTurma, gerarMockProfessoresUmPorMateria, gerarMockRespostasAmostra, gerarMockRespostasGeralCompleto, seedMockDataCompleto, resetMockData } from '../lib/mockData.js'
 import Papa from 'papaparse'
 import { parseCSVFile } from '../lib/csv'
+import { z } from 'zod'
+
+const alunoSchema = z.object({
+  turma: z.string().regex(/^[0-9][A-Z]$/, 'Turma deve ser ex: 9A, 1B'),
+  numero: z.string().regex(/^[0-9]{1,3}$/, 'Número 1 a 3 dígitos'),
+  nome: z.string().trim().min(5, 'Nome muito curto').max(80, 'Nome muito longo')
+})
+const professorSchema = z.object({
+  nome: z.string().trim().min(3, 'Nome muito curto').max(80),
+  componente: z.string().min(1, 'Selecione componente'),
+  turmas: z.array(z.string()).min(1, 'Selecione ao menos 1 turma')
+})
 
 export default function Admin() {
   const [turmas, setTurmasState] = useState([])
@@ -25,6 +37,8 @@ export default function Admin() {
   const [profNome, setProfNome] = useState('')
   const [profComp, setProfComp] = useState('')
   const [profTurmas, setProfTurmas] = useState([])
+  const [alunoError, setAlunoError] = useState('')
+  const [profError, setProfError] = useState('')
 
   useEffect(()=>{
     refresh()
@@ -87,10 +101,15 @@ export default function Admin() {
     setComponentes(getComponentes().filter(x=>x!==c)); refresh()
   }
   const addAluno = ()=>{
-    if(!newAlunoNome.trim() || !newAlunoNumero.trim()) {alert('Preencha número e nome'); return}
+    const parsed = alunoSchema.safeParse({ turma: newAlunoTurma, numero: String(newAlunoNumero).trim(), nome: newAlunoNome.trim() })
+    if(!parsed.success){
+      setAlunoError(parsed.error.issues[0].message)
+      return
+    }
+    setAlunoError('')
     const all = getAlunos()
     const exists = all.find(a=> a.turma===newAlunoTurma && String(a.numero)===String(newAlunoNumero))
-    if(exists) {alert('Número já existe nessa turma'); return}
+    if(exists) { setAlunoError('Número já existe nessa turma'); return}
     const novo = { id: `${newAlunoTurma}-${newAlunoNumero}-${Date.now()}`, turma: newAlunoTurma, numero: String(newAlunoNumero), nome: newAlunoNome.trim().toUpperCase() }
     setAlunos([...all,novo]); refresh(); setNewAlunoNumero(''); setNewAlunoNome('')
   }
@@ -136,9 +155,12 @@ export default function Admin() {
     setProfTurmas(prev=> prev.includes(t) ? prev.filter(x=>x!==t) : [...prev, t])
   }
   const handleAddProfessor = ()=>{
-    if(!profNome.trim()){ alert('Informe nome do professor'); return }
-    if(!profComp) { alert('Selecione componente'); return }
-    if(profTurmas.length===0){ alert('Selecione ao menos 1 turma'); return }
+    const parsed = professorSchema.safeParse({ nome: profNome.trim(), componente: profComp, turmas: profTurmas })
+    if(!parsed.success){
+      setProfError(parsed.error.issues[0].message)
+      return
+    }
+    setProfError('')
     const p = addProfessor({ nome: profNome.trim(), componente: profComp, turmas: profTurmas })
     refresh()
     setProfNome(''); setProfComp(''); setProfTurmas([])
@@ -262,6 +284,7 @@ export default function Admin() {
                 ))}
               </div>
               {profTurmas.length>0 && <p className="text-xs text-emerald-700 mt-2">✓ Selecionadas: {profTurmas.join(', ')} • {profTurmas.reduce((acc,t)=> acc + getAlunos().filter(a=>a.turma===t).length,0)} alunos no total</p>}
+              {profError && <div className="mt-3 text-xs bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl" role="alert">{profError}</div>}
             </div>
             <div className="mt-4 flex gap-2">
               <button onClick={handleAutoGenerateProfessores} className="text-sm border border-amber-300 bg-amber-50 text-amber-800 px-4 py-2 rounded-xl hover:bg-amber-100">⚡ Gerar automaticamente 1 professor por componente</button>
@@ -479,6 +502,7 @@ export default function Admin() {
                   <button onClick={addAluno} className="w-full bg-slate-900 text-white py-2.5 rounded-xl text-sm font-medium">Adicionar</button>
                 </div>
               </div>
+              {alunoError && <div className="text-xs bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl" role="alert">{alunoError}</div>}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <div className="max-h-96 overflow-auto">
                   <table className="w-full text-sm">

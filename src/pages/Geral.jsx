@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { getAlunos, getTurmas, getComponentes, getRespostas, setRespostas, getConfig, classifyValor } from '../lib/storage'
-import { exportGeralCSV } from '../lib/csv'
+import { exportGeralCSV, exportToXLSX } from '../lib/csv'
 import Papa from 'papaparse'
 import { normalizeRow, extractAlunoInfo, extractDados } from '../lib/helpers'
 
@@ -18,6 +18,8 @@ export default function Geral(){
   const [auth, setAuth] = useState(false)
   const [pwdInput, setPwdInput] = useState('')
   const [importLog, setImportLog] = useState('')
+  const [pagina, setPagina] = useState(1)
+  const porPagina = 30
 
   useEffect(()=>{
     const t = getTurmas()
@@ -154,6 +156,17 @@ export default function Geral(){
     return list.sort((a,b)=> a.turma.localeCompare(b.turma) || Number(a.numero)-Number(b.numero))
   }, [alunos, filtroTurma, busca])
 
+  // paginação: por turma mostra tudo (~20), visão geral pagina 30 por vez
+  const totalPaginas = Math.max(1, Math.ceil(filteredAlunos.length / porPagina))
+  const paginaSafe = Math.min(pagina, totalPaginas)
+  const alunosPaginados = useMemo(()=>{
+    if(filteredAlunos.length <= porPagina) return filteredAlunos
+    const start = (paginaSafe - 1) * porPagina
+    return filteredAlunos.slice(start, start + porPagina)
+  }, [filteredAlunos, paginaSafe])
+
+  useEffect(()=>{ setPagina(1) }, [filtroTurma, busca, filtroComp, filtroTri])
+
   const compsToShow = useMemo(()=>{
     if(filtroComp!=='todos') return [filtroComp]
     return componentes
@@ -254,7 +267,7 @@ export default function Geral(){
             <input type="file" accept=".csv,.json" multiple onChange={handleImport} className="hidden" />
           </label>
           <button onClick={()=>exportGeralCSV(respostas.filter(r=> !filtroTri || r.trimestre===filtroTri), alunos, turmas, componentes, filtroTri, `GERAL - PRE CONSELHO ${filtroTri}.csv`)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-700">📥 Exportar GERAL CSV</button>
-          <button onClick={()=>exportGeralCSV(respostas.filter(r=> !filtroTri || r.trimestre===filtroTri), alunos, turmas, componentes, filtroTri, `GERAL - PRE CONSELHO ${filtroTri}.xlsx`.replace('.csv','.xlsx'))} className="bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50">Exportar XLSX</button>
+          <button onClick={()=>{ const filtered = respostas.filter(r=> !filtroTri || r.trimestre===filtroTri); exportToXLSX(filtered, `GERAL - PRE CONSELHO ${filtroTri}.xlsx`); }} className="bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50">Exportar XLSX</button>
         </div>
       </div>
 
@@ -328,7 +341,7 @@ export default function Geral(){
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredAlunos.length===0 ? <tr><td colSpan={compsToShow.length+1} className="px-4 py-12 text-center text-slate-400">Nenhum aluno. Importe CSVs em Coordenação.</td></tr> :
-                  filteredAlunos.map(a=>{
+                  alunosPaginados.map(a=>{
                     return (
                       <tr key={a.id} className="hover:bg-slate-50">
                         <td className="sticky left-0 bg-white hover:bg-slate-50 px-3 py-2.5 border-r border-slate-200 font-medium text-slate-900 whitespace-nowrap">
@@ -368,13 +381,23 @@ export default function Geral(){
             <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-200 border border-emerald-300"></span> Ótima (verde) — todos Sim e sem alertas</span>
             <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-amber-200 border border-amber-300"></span> Mediana (amarelo) — algum Parcial</span>
             <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-200 border border-red-300"></span> Atenção (vermelho) — ruim (Não) ou alerta (intervenção/comportamento/reforço)</span>
-            <span className="ml-auto">Clique no aluno para detalhes</span>
+            <span className="ml-auto hidden sm:inline">Clique no aluno para detalhes</span>
           </div>
+          {totalPaginas>1 && (
+            <div className="px-4 py-3 bg-white border-t border-slate-200 flex items-center justify-between">
+              <span className="text-xs text-slate-500">Página {paginaSafe} de {totalPaginas} • {filteredAlunos.length} alunos • {filteredAlunos.length>porPagina ? `mostrando ${alunosPaginados.length}` : ''}</span>
+              <div className="flex gap-1">
+                <button disabled={paginaSafe<=1} onClick={()=>setPagina(p=>Math.max(1,p-1))} className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs disabled:opacity-40 hover:bg-slate-50">‹ Anterior</button>
+                <span className="px-3 py-1.5 text-xs bg-slate-900 text-white rounded-lg">{paginaSafe}</span>
+                <button disabled={paginaSafe>=totalPaginas} onClick={()=>setPagina(p=>Math.min(totalPaginas,p+1))} className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs disabled:opacity-40 hover:bg-slate-50">Próxima ›</button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           <div className="divide-y divide-slate-100 max-h-[65vh] overflow-auto">
-            {filteredAlunos.map(a=>{
+            {alunosPaginados.map(a=>{
               const comps = compsToShow.map(c=> ({c, cell: getCell(a,c)})).filter(x=>x.cell?.has)
               return (
                 <div key={a.id} className="p-4 hover:bg-slate-50">
@@ -401,6 +424,16 @@ export default function Geral(){
               )
             })}
           </div>
+          {totalPaginas>1 && (
+            <div className="px-4 py-3 bg-white border-t border-slate-200 flex items-center justify-between">
+              <span className="text-xs text-slate-500">Página {paginaSafe} de {totalPaginas} • {filteredAlunos.length} alunos</span>
+              <div className="flex gap-1">
+                <button disabled={paginaSafe<=1} onClick={()=>setPagina(p=>Math.max(1,p-1))} className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs disabled:opacity-40 hover:bg-slate-50">‹ Anterior</button>
+                <span className="px-3 py-1.5 text-xs bg-slate-900 text-white rounded-lg">{paginaSafe}</span>
+                <button disabled={paginaSafe>=totalPaginas} onClick={()=>setPagina(p=>Math.min(totalPaginas,p+1))} className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs disabled:opacity-40 hover:bg-slate-50">Próxima ›</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
