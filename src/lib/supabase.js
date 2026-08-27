@@ -36,17 +36,34 @@ async function flushQueue(){
   const batch = [...queue]
   queue = []
   try{
-    // group by table
+    // group by table and deduplicate by primary key (evita 21000 duplicate constrained values quando professor muda 4 campos em <400ms)
     const byTable = batch.reduce((acc, item)=>{
       if(!acc[item.table]) acc[item.table]=[]
       acc[item.table].push(item.data)
       return acc
     }, {})
     for(const table in byTable){
-      const rows = byTable[table]
-      // respostas uses composite key via upsert, need to specify onConflict
+      let rows = byTable[table]
       if(table==='respostas'){
+        const dedup = new Map()
+        for(const r of rows){
+          const key = `${r.turma}|${r.componente}|${r.trimestre}|${r.aluno_numero}`
+          dedup.set(key, r) // mantém último (dados mais recentes)
+        }
+        rows = [...dedup.values()]
         const { error } = await supabase.from(table).upsert(rows, { onConflict: 'turma,componente,trimestre,aluno_numero' })
+        if(error) throw error
+      } else if(table==='professores'){
+        const dedup = new Map()
+        for(const r of rows) dedup.set(r.token || r.id, r)
+        rows = [...dedup.values()]
+        const { error } = await supabase.from(table).upsert(rows)
+        if(error) throw error
+      } else if(table==='alunos'){
+        const dedup = new Map()
+        for(const r of rows) dedup.set(r.id, r)
+        rows = [...dedup.values()]
+        const { error } = await supabase.from(table).upsert(rows)
         if(error) throw error
       } else {
         const { error } = await supabase.from(table).upsert(rows)
