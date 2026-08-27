@@ -5,7 +5,14 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const isSupabaseConfigured = !!url && !!anonKey
 
-export const supabase = isSupabaseConfigured ? createClient(url, anonKey, {
+if(typeof window!=='undefined' && url && url.endsWith('/rest/v1')){
+  console.warn('[sync] VITE_SUPABASE_URL deve ser https://SEU-PROJETO.supabase.co sem /rest/v1 — corrija na Vercel e redeploy')
+}
+if(typeof window!=='undefined' && anonKey && anonKey.startsWith('sb_secret_')){
+  console.warn('[sync] VITE_SUPABASE_ANON_KEY está com sb_secret_ (service_role) — use sb_publishable_ no frontend. Troque na Vercel e redeploy')
+}
+
+export const supabase = isSupabaseConfigured ? createClient(url.replace(/\/rest\/v1\/?$/, ''), anonKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 }) : null
 
@@ -49,10 +56,12 @@ async function flushQueue(){
     // notify local listeners that sync succeeded
     window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'synced', count: batch.length } }))
   }catch(e){
-    console.warn('[sync] flush failed, requeue', e)
+    const details = { message: e.message, details: e.details, hint: e.hint, code: e.code, table: Object.keys(batch.reduce((a,b)=>{a[b.table]=true;return a},{})).join(',') }
+    console.warn('[sync] flush failed, requeue', e, details, 'url:', url, 'key prefix:', anonKey ? anonKey.slice(0,12) : 'none')
+    console.warn('[sync] batch sample:', JSON.stringify(batch[0]).slice(0,600))
     // requeue
     queue.unshift(...batch)
-    window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'error', error: e.message } }))
+    window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'error', error: e.message, details: e.details, hint: e.hint, code: e.code } }))
     // retry in 3s
     setTimeout(flushQueue, 3000)
   }
@@ -110,8 +119,10 @@ export async function fetchAllFromSupabase(){
       supabase.from('professores').select('*').limit(500),
       supabase.from('turmas').select('*').limit(100)
     ])
-    if(respostas.error) console.warn('[sync] fetch respostas error', respostas.error)
-    if(alunos.error) console.warn('[sync] fetch alunos error', alunos.error)
+    if(respostas.error) console.warn('[sync] fetch respostas error', respostas.error, respostas)
+    if(alunos.error) console.warn('[sync] fetch alunos error', alunos.error, alunos)
+    if(professores.error) console.warn('[sync] fetch professores error', professores.error, professores)
+    if(turmas.error) console.warn('[sync] fetch turmas error', turmas.error, turmas)
     return {
       respostas: respostas.data || [],
       alunos: alunos.data || [],
