@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { getConfig } from '../lib/storage'
 import { isSupabaseConfigured } from '../lib/supabase.js'
 import { useEffect, useState } from 'react'
+import logo from '../assets/santamarcelina.png'
 
 export default function Layout({ children }) {
   const loc = useLocation()
@@ -24,11 +25,12 @@ export default function Layout({ children }) {
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[64px] flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white font-bold text-sm">SM</div>
-            <div>
+            <img src={logo} alt="Santa Marcelina Colégio São Paulo" className="h-10 w-auto object-contain" />
+            <div className="hidden sm:block">
               <div className="font-semibold text-slate-900 leading-none tracking-tight">Santa Marcelina</div>
               <div className="text-xs text-slate-500">{config.trimestre} • {config.ano}</div>
             </div>
+            <div className="sm:hidden text-xs text-slate-500">{config.trimestre} • {config.ano}</div>
           </Link>
           <nav className="flex items-center gap-1.5">
             <span className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border font-medium ${isSupabaseConfigured ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>

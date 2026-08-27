@@ -106,7 +106,7 @@ export function resetMockData(){
   return seedMockDataCompleto({ comAmostra: true })
 }
 
-// Gera amostra leve: 2 turmas x 3 componentes x 3 alunos (18) — cores verde/amarelo/vermelho
+// Gera amostra leve: 2 turmas x 3 componentes x 3 alunos (18) — cores verde/amarelo/vermelho (novo modelo)
 export function gerarMockRespostasAmostra(){
   const turmas = getTurmas().slice(0,2)
   const componentes = getComponentes().slice(0,3)
@@ -120,18 +120,22 @@ export function gerarMockRespostasAmostra(){
         let dados
         if(i===0){
           dados = {
-            aproveitamento:'SIM', participacao:'SIM', cumprimento:'SIM', progresso:'SIM', colaboracao:'SIM', proatividade:'SIM', concentracao:'SIM',
-            necessidade:'NÃO', respostasPositivas:'SIM', observacoes:'', conversei:'', disciplinar:'', educacional:'', comunicado:'', tirei:'', naoIntervim:'', reforco:'', motivo:''
+            aproveitamento:'SIM', engajamento:'SIM', organizacao:'SIM', concentracao:'SIM', assiduidade:'SIM', convivencia:'SIM', evolucao:'MELHOROU', bemEstar:'',
+            observacoes:'', conversei:'', disciplinar:'', educacional:'', comunicado:'', reforco:'', apoio:'', familia:'', motivo:'',
+            // legado para compat
+            participacao:'SIM', cumprimento:'SIM', progresso:'SIM', colaboracao:'SIM', proatividade:'SIM', necessidade:'NÃO', respostasPositivas:'SIM', tirei:'', naoIntervim:''
           }
         } else if(i===1){
           dados = {
-            aproveitamento:'SIM', participacao:'PARCIAL', cumprimento:'SIM', progresso:'PARCIAL', colaboracao:'SIM', proatividade:'SIM', concentracao:'PARCIAL',
-            necessidade:'NÃO', respostasPositivas:'', observacoes:'', conversei:'', disciplinar:'', educacional:'', comunicado:'', tirei:'', naoIntervim:'', reforco:'', motivo:''
+            aproveitamento:'SIM', engajamento:'PARCIAL', organizacao:'SIM', concentracao:'PARCIAL', assiduidade:'SIM', convivencia:'SIM', evolucao:'ESTAVEL', bemEstar:'',
+            observacoes:'', conversei:'', disciplinar:'', educacional:'', comunicado:'', reforco:'', apoio:'', familia:'', motivo:'',
+            participacao:'PARCIAL', cumprimento:'SIM', progresso:'PARCIAL', colaboracao:'SIM', proatividade:'SIM', necessidade:'NÃO', respostasPositivas:'', tirei:'', naoIntervim:''
           }
         } else {
           dados = {
-            aproveitamento:'NÃO', participacao:'NÃO', cumprimento:'PARCIAL', progresso:'NÃO', colaboracao:'PARCIAL', proatividade:'NÃO', concentracao:'NÃO',
-            necessidade:'SIM', respostasPositivas:'NÃO', observacoes:'Conversa em excesso, dispersa', conversei:'X', disciplinar:'', educacional:'', comunicado:'', tirei:'', naoIntervim:'', reforco:'X', motivo:'Dificuldade em interpretação e resultados em provas.'
+            aproveitamento:'NÃO', engajamento:'NÃO', organizacao:'PARCIAL', concentracao:'NÃO', assiduidade:'PARCIAL', convivencia:'NÃO', evolucao:'PIOROU', bemEstar:'ANSIEDADE',
+            observacoes:'Conversa em excesso, dispersa e falta de rotina', conversei:'X', disciplinar:'', educacional:'', comunicado:'X', reforco:'X', apoio:'X', familia:'', motivo:'Dificuldade em interpretação e resultados em provas.',
+            participacao:'NÃO', cumprimento:'PARCIAL', progresso:'NÃO', colaboracao:'PARCIAL', proatividade:'NÃO', necessidade:'SIM', respostasPositivas:'NÃO', tirei:'', naoIntervim:''
           }
         }
         upsertResposta({ turma: turma.nome, componente: comp, trimestre: '2TRI', alunoNumero: a.numero, alunoNome: a.nome, dados })
@@ -174,40 +178,41 @@ export function gerarMockRespostasGeralCompleto({ densidade = 0.4, trimestre = '
         let dados
         if(tier==='otima'){
           dados = {
-            aproveitamento:'SIM', participacao:'SIM', cumprimento:'SIM', progresso:'SIM', colaboracao:'SIM', proatividade:'SIM', concentracao:'SIM',
-            necessidade:'NÃO', respostasPositivas: Math.random()>0.5 ? 'SIM' : '', observacoes: Math.random()>0.85 ? pick(obsExemplos.slice(0,3)) : '', conversei:'', disciplinar:'', educacional:'', comunicado:'', tirei:'', naoIntervim:'', reforco:'', motivo:''
+            aproveitamento:'SIM', engajamento:'SIM', organizacao:'SIM', concentracao:'SIM', assiduidade:'SIM', convivencia:'SIM', evolucao:'MELHOROU', bemEstar: Math.random()>0.9 ? pick(['','ANSIEDADE']) : '',
+            observacoes: Math.random()>0.85 ? pick(obsExemplos.slice(0,3)) : '', conversei:'', disciplinar:'', educacional:'', comunicado:'', reforco:'', apoio:'', familia:'', motivo:'',
+            participacao:'SIM', cumprimento:'SIM', progresso:'SIM', colaboracao:'SIM', proatividade:'SIM', necessidade:'NÃO', respostasPositivas: Math.random()>0.5 ? 'SIM' : '', tirei:'', naoIntervim:''
           }
         } else if(tier==='mediana'){
-          // 2-3 PARCIAL, resto SIM
-          const parcialKeys = ['participacao','progresso','concentracao']
           dados = {
-            aproveitamento:'SIM', participacao: Math.random()>0.5?'PARCIAL':'SIM', cumprimento:'SIM', progresso: Math.random()>0.5?'PARCIAL':'SIM', colaboracao:'SIM', proatividade:'SIM', concentracao: Math.random()>0.5?'PARCIAL':'SIM',
-            necessidade:'NÃO', respostasPositivas:'', observacoes: Math.random()>0.7 ? pick(obsExemplos) : '', conversei: Math.random()>0.8 ? 'X' : '', disciplinar:'', educacional:'', comunicado:'', tirei:'', naoIntervim:'', reforco:'', motivo:''
+            aproveitamento:'SIM', engajamento: Math.random()>0.5?'PARCIAL':'SIM', organizacao:'SIM', concentracao: Math.random()>0.5?'PARCIAL':'SIM', assiduidade: Math.random()>0.7?'PARCIAL':'SIM', convivencia:'SIM', evolucao:'ESTAVEL', bemEstar: Math.random()>0.8 ? pick(['ANSIEDADE','APATIA','']) : '',
+            observacoes: Math.random()>0.7 ? pick(obsExemplos) : '', conversei: Math.random()>0.8 ? 'X' : '', disciplinar:'', educacional:'', comunicado:'', reforco:'', apoio:'', familia:'', motivo:'',
+            participacao: Math.random()>0.5?'PARCIAL':'SIM', cumprimento:'SIM', progresso:'ESTAVEL', colaboracao:'SIM', proatividade:'SIM', necessidade:'NÃO', respostasPositivas:'', tirei:'', naoIntervim:''
           }
         } else {
-          // ruim: vários NÃO + alerta
           const temReforco = Math.random()>0.45
-          const temInterv = Math.random()>0.35
+          const temApoio = Math.random()>0.5
+          const temFamilia = Math.random()>0.7
           const temComp = Math.random()>0.5
+          const bem = Math.random()>0.4 ? pick(['ANSIEDADE','APATIA','AGITACAO','SONOLENCIA','ISOLAMENTO']) : ''
           dados = {
             aproveitamento: Math.random()>0.3 ? 'NÃO' : 'PARCIAL',
-            participacao: Math.random()>0.4 ? 'NÃO' : 'PARCIAL',
-            cumprimento: Math.random()>0.5 ? 'PARCIAL' : 'NÃO',
-            progresso: Math.random()>0.4 ? 'NÃO' : 'PARCIAL',
-            colaboracao: Math.random()>0.5 ? 'SIM' : 'PARCIAL',
-            proatividade: Math.random()>0.5 ? 'NÃO' : 'PARCIAL',
+            engajamento: Math.random()>0.4 ? 'NÃO' : 'PARCIAL',
+            organizacao: Math.random()>0.5 ? 'PARCIAL' : 'NÃO',
             concentracao: Math.random()>0.3 ? 'NÃO' : 'PARCIAL',
-            necessidade: temInterv ? 'SIM' : 'NÃO',
-            respostasPositivas: temInterv && Math.random()>0.5 ? 'NÃO' : '',
+            assiduidade: Math.random()>0.5 ? 'NÃO' : 'PARCIAL',
+            convivencia: Math.random()>0.5 ? 'NÃO' : 'SIM',
+            evolucao: Math.random()>0.4 ? 'PIOROU' : 'ESTAVEL',
+            bemEstar: bem,
             observacoes: pick(obsExemplos),
             conversei: temComp && Math.random()>0.5 ? 'X' : '',
             disciplinar: temComp && Math.random()>0.85 ? 'X' : '',
             educacional: temComp && Math.random()>0.85 ? 'X' : '',
             comunicado: Math.random()>0.9 ? 'X' : '',
-            tirei: Math.random()>0.92 ? 'X' : '',
-            naoIntervim: '',
             reforco: temReforco ? 'X' : '',
-            motivo: temReforco ? pick(['Dificuldade em interpretação','Resultados em provas','Falta rotina de estudos','Baixa concentração']) : ''
+            apoio: temApoio ? 'X' : '',
+            familia: temFamilia ? 'X' : '',
+            motivo: (temReforco||temApoio||temFamilia) ? pick(['Dificuldade em interpretação','Resultados em provas','Falta rotina de estudos','Baixa concentração','Ansiedade em provas']) : '',
+            participacao: Math.random()>0.4 ? 'NÃO' : 'PARCIAL', cumprimento: Math.random()>0.5 ? 'PARCIAL' : 'NÃO', progresso: Math.random()>0.4 ? 'PIOROU' : 'PARCIAL', colaboracao: Math.random()>0.5 ? 'SIM' : 'PARCIAL', proatividade: Math.random()>0.5 ? 'NÃO' : 'PARCIAL', necessidade: temApoio ? 'SIM' : 'NÃO', respostasPositivas: '', tirei: Math.random()>0.92 ? 'X' : '', naoIntervim:''
           }
         }
         upsertResposta({ turma: turma.nome, componente: comp, trimestre, alunoNumero: a.numero, alunoNome: a.nome, dados })

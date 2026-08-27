@@ -96,14 +96,26 @@ export function extractAlunoInfo(row, fallbackTurma){
 
 export function extractDados(row){
   const nrow = normalizeRow(row)
+  // legado: participacao/proatividade -> engajamento ; cumprimento/colaboracao -> organizacao ; progresso -> evolucao
+  const engajamento = getField(nrow, 'Engajamento') || getField(nrow, 'Participação')|| getField(nrow, 'Participa')|| getField(nrow, 'Proatividade')||''
+  const organizacao = getField(nrow, 'Organização') || getField(nrow, 'Organizacao') || getField(nrow, 'Cumprimento')|| getField(nrow, 'Colaboração')|| getField(nrow, 'Colaboracao')||''
+  const evolucao = getField(nrow, 'Evolução') || getField(nrow, 'Evolucao') || getField(nrow, 'Progresso')||''
+  const bemEstar = getField(nrow, 'Bem-estar') || getField(nrow, 'Bem estar') || getField(nrow, 'Sinais de bem-estar') || getField(nrow, 'bemEstar')||''
   return {
     aproveitamento: getField(nrow, 'Aproveitamento')||'',
+    engajamento,
+    organizacao,
+    concentracao: getField(nrow, 'Concentração')|| getField(nrow, 'Concentra')|| getField(nrow, 'Atenção')||'',
+    assiduidade: getField(nrow, 'Frequência')|| getField(nrow, 'Frequencia')|| getField(nrow, 'Assiduidade')|| getField(nrow, 'Pontualidade')||'',
+    convivencia: getField(nrow, 'Convivência')|| getField(nrow, 'Convivencia')|| getField(nrow, 'Respeito')||'',
+    bemEstar,
+    evolucao,
+    // legado ainda lido para compatibilidade Geral
     participacao: getField(nrow, 'Participação')|| getField(nrow, 'Participa')||'',
     cumprimento: getField(nrow, 'Cumprimento')||'',
-    progresso: getField(nrow, 'Progresso')||'',
     colaboracao: getField(nrow, 'Colaboração')|| getField(nrow, 'Colaboracao')||'',
     proatividade: getField(nrow, 'Proatividade')||'',
-    concentracao: getField(nrow, 'Concentração')|| getField(nrow, 'Concentra')||'',
+    progresso: getField(nrow, 'Progresso')||'',
     necessidade: getField(nrow, 'Necessidade de intervenção')|| getField(nrow, 'Necessidade')||'',
     respostasPositivas: getField(nrow, 'Respostas positivas')||'',
     observacoes: getField(nrow, 'Observações')|| getField(nrow, 'Observa')||'',
@@ -113,7 +125,9 @@ export function extractDados(row){
     comunicado: getField(nrow, 'Comunicado')||'',
     tirei: getField(nrow, 'Tirei de sala')||'',
     naoIntervim: getField(nrow, 'Não realizei')|| getField(nrow, 'Nao realizei')||'',
-    reforco: getField(nrow, 'Encaminhado para aula')|| getField(nrow, 'reforço')|| getField(nrow, 'reforco')||'',
+    reforco: getField(nrow, 'Encaminhado para aula')|| getField(nrow, 'reforço')|| getField(nrow, 'reforco')|| getField(nrow, 'Reforço de conteúdo')||'',
+    apoio: getField(nrow, 'Apoio')|| getField(nrow, 'socioemocional')||'',
+    familia: getField(nrow, 'Família')|| getField(nrow, 'Familia')|| getField(nrow, 'Conversa com família')||'',
     motivo: getField(nrow, 'Motivo')||'',
   }
 }

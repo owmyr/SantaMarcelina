@@ -9,17 +9,15 @@ export default function Geral(){
   const [turmas, setTurmasState] = useState([])
   const [componentes, setComponentesState] = useState([])
   const [respostas, setRespostasState] = useState([])
-  const [filtroTurma, setFiltroTurma] = useState('todas')
+  const [filtroTurma, setFiltroTurma] = useState('')
   const [filtroComp, setFiltroComp] = useState('todos')
   const [filtroTri, setFiltroTri] = useState('')
   const [busca, setBusca] = useState('')
-  const [view, setView] = useState('matriz') // matriz | lista | aluno
+  const [view, setView] = useState('matriz') // matriz | lista
   const [selectedAluno, setSelectedAluno] = useState(null)
   const [auth, setAuth] = useState(false)
   const [pwdInput, setPwdInput] = useState('')
   const [importLog, setImportLog] = useState('')
-  const [pagina, setPagina] = useState(1)
-  const porPagina = 30
 
   useEffect(()=>{
     const t = getTurmas()
@@ -28,7 +26,7 @@ export default function Geral(){
     setComponentesState(getComponentes())
     setRespostasState(getRespostas())
     setFiltroTri(getConfig().trimestre)
-    if(t.length>0) setFiltroTurma(t[0].nome) // default por turma (ex: 9A), com opção de ver todas
+    if(t.length>0) setFiltroTurma(t[0].nome) // default por turma (ex: 9A) — visão apenas por turma
     const s = sessionStorage.getItem('sm_geral_auth')
     if(s==='1') setAuth(true)
   }, [])
@@ -151,21 +149,15 @@ export default function Geral(){
 
   const filteredAlunos = useMemo(()=>{
     let list = alunos
-    if(filtroTurma!=='todas') list = list.filter(a=>a.turma===filtroTurma)
+    // apenas por turma — sem visão geral
+    const turmaAtiva = filtroTurma || turmas[0]?.nome
+    if(turmaAtiva) list = list.filter(a=>a.turma===turmaAtiva)
     if(busca) list = list.filter(a=>a.nome.toLowerCase().includes(busca.toLowerCase()) || String(a.numero).includes(busca))
-    return list.sort((a,b)=> a.turma.localeCompare(b.turma) || Number(a.numero)-Number(b.numero))
-  }, [alunos, filtroTurma, busca])
+    return list.sort((a,b)=> Number(a.numero)-Number(b.numero))
+  }, [alunos, filtroTurma, busca, turmas])
 
-  // paginação: por turma mostra tudo (~20), visão geral pagina 30 por vez
-  const totalPaginas = Math.max(1, Math.ceil(filteredAlunos.length / porPagina))
-  const paginaSafe = Math.min(pagina, totalPaginas)
-  const alunosPaginados = useMemo(()=>{
-    if(filteredAlunos.length <= porPagina) return filteredAlunos
-    const start = (paginaSafe - 1) * porPagina
-    return filteredAlunos.slice(start, start + porPagina)
-  }, [filteredAlunos, paginaSafe])
-
-  useEffect(()=>{ setPagina(1) }, [filtroTurma, busca, filtroComp, filtroTri])
+  // sem paginação — por turma mostra todos (~20-30 alunos)
+  const alunosPaginados = filteredAlunos
 
   const compsToShow = useMemo(()=>{
     if(filtroComp!=='todos') return [filtroComp]
@@ -179,23 +171,40 @@ export default function Geral(){
     const d=r.dados
     const count = Object.values(d).filter(v=>String(v).trim()!=='').length
     if(count===0) return { r, count:0, has:false }
-    // desempenho fields for performance
-    const desempenhoKeys = ['aproveitamento','participacao','cumprimento','progresso','colaboracao','proatividade','concentracao']
-    const vals = desempenhoKeys.map(k=> classifyValor(d[k]||''))
-    const hasRuim = vals.includes('nao')
-    const hasParcial = vals.includes('parcial')
-    const hasSim = vals.includes('sim')
+    // desempenho + presença para cor (6 campos novos com fallback legado)
+    const engajamentoVal = d.engajamento || d.participacao || d.proatividade || ''
+    const organizacaoVal = d.organizacao || d.cumprimento || d.colaboracao || ''
+    const evolucaoVal = d.evolucao || d.progresso || ''
+    // mapear evolucao MELHOROU/ESTAVEL/PIOROU para sim/parcial/nao
+    const evolucaoClass = (()=>{ const s=String(evolucaoVal).toUpperCase(); if(['MELHOROU','ESTAVEL','PIOROU'].includes(s)) return s==='MELHOROU'?'sim': s==='ESTAVEL'?'parcial':'nao'; return classifyValor(evolucaoVal) })()
+    const desempenhoVals = [
+      classifyValor(d.aproveitamento||''),
+      classifyValor(engajamentoVal),
+      classifyValor(organizacaoVal),
+      classifyValor(d.concentracao||''),
+      classifyValor(d.assiduidade||''),
+      classifyValor(d.convivencia||''),
+      evolucaoClass,
+    ]
+    const hasRuim = desempenhoVals.includes('nao')
+    const hasParcial = desempenhoVals.includes('parcial')
+    const hasSim = desempenhoVals.includes('sim')
     let performance = 'sem_avaliacao'
     if(hasRuim) performance='ruim'
     else if(hasParcial) performance='mediana'
     else if(hasSim) performance='otima'
     else performance='sem_avaliacao'
 
-    // alertas: intervenção (necessidade SIM), comportamento (qualquer ação exceto nãoIntervim), reforço
-    const temIntervencao = classifyValor(d.necessidade||'')==='sim' // SIM = precisa = alerta vermelho
+    // alertas: intervenção legado + novos encaminhamentos + bem-estar + comportamento
+    const temIntervencao = classifyValor(d.necessidade||'')==='sim' || !!(d.apoio && String(d.apoio).trim()!=='') // apoio = intervenção socioemocional
     const temComportamento = !!(d.conversei || d.disciplinar || d.educacional || d.comunicado || d.tirei || d.observacoes)
     const temReforco = !!(d.reforco && String(d.reforco).trim()!=='')
-    const temAlerta = temIntervencao || temComportamento || temReforco
+    const temApoio = !!(d.apoio && String(d.apoio).trim()!=='')
+    const temFamilia = !!(d.familia && String(d.familia).trim()!=='')
+    const temBemEstar = !!(d.bemEstar && String(d.bemEstar).trim()!=='' && String(d.bemEstar).trim().toUpperCase()!=='')
+    const temAssiduidadeAlerta = classifyValor(d.assiduidade||'')==='nao'
+    const temConvivenciaAlerta = classifyValor(d.convivencia||'')==='nao'
+    const temAlerta = temIntervencao || temComportamento || temReforco || temApoio || temFamilia || temBemEstar || temAssiduidadeAlerta || temConvivenciaAlerta
 
     // cor: verde só se ótima sem alerta, amarelo mediana sem alerta, vermelho se ruim ou qualquer alerta
     let cor = 'emerald' // verde
@@ -203,6 +212,11 @@ export default function Geral(){
     if(temAlerta || performance==='ruim'){
       cor='red'; label='Atenção'
       if(temReforco) label='Reforço'
+      else if(temApoio) label='Apoio'
+      else if(temFamilia) label='Família'
+      else if(temBemEstar) label='Bem-estar'
+      else if(temAssiduidadeAlerta) label='Frequência'
+      else if(temConvivenciaAlerta) label='Convivência'
       else if(temIntervencao) label='Intervenção'
       else if(temComportamento) label='Comportamento'
       else label='Baixo desempenho'
@@ -215,30 +229,37 @@ export default function Geral(){
     }
 
     const flags=[]
+    if(temBemEstar) flags.push('🧠')
+    if(temApoio) flags.push('💜')
+    if(temFamilia) flags.push('👨‍👩‍👧')
+    if(temReforco) flags.push('📚')
     if(temIntervencao) flags.push('⚠️')
     if(temComportamento) flags.push('💬')
-    if(temReforco) flags.push('📚')
+    if(temAssiduidadeAlerta) flags.push('📅')
+    if(temConvivenciaAlerta) flags.push('🤝')
     if(performance==='ruim') flags.push('🔴')
     else if(performance==='mediana') flags.push('🟡')
     else if(performance==='otima') flags.push('🟢')
 
-    return { r, count, flags, has:true, performance, temAlerta, temIntervencao, temComportamento, temReforco, cor, label }
+    return { r, count, flags, has:true, performance, temAlerta, temIntervencao, temComportamento, temReforco, temApoio, temFamilia, temBemEstar, temAssiduidadeAlerta, temConvivenciaAlerta, cor, label }
   }
 
   const stats = useMemo(()=>{
     const tri = filtroTri || getConfig().trimestre
     const totalCells = filteredAlunos.length * compsToShow.length
-    let filled=0, withObs=0, withReforco=0, verdes=0, amarelos=0, vermelhos=0
+    let filled=0, withObs=0, withReforco=0, withApoio=0, withBemEstar=0, verdes=0, amarelos=0, vermelhos=0
     for(const a of filteredAlunos) for(const c of compsToShow){
       const cell=getCell(a,c)
       if(cell?.has) filled++
       if(cell?.r?.dados?.observacoes) withObs++
       if(cell?.r?.dados?.reforco) withReforco++
+      if(cell?.r?.dados?.apoio) withApoio++
+      if(cell?.r?.dados?.bemEstar) withBemEstar++
       if(cell?.cor==='emerald') verdes++
       else if(cell?.cor==='amber') amarelos++
       else if(cell?.cor==='red') vermelhos++
     }
-    return { totalCells, filled, pct: totalCells? Math.round(filled/totalCells*100):0, withObs, withReforco, verdes, amarelos, vermelhos }
+    return { totalCells, filled, pct: totalCells? Math.round(filled/totalCells*100):0, withObs, withReforco, withApoio, withBemEstar, verdes, amarelos, vermelhos }
   }, [filteredAlunos, compsToShow, respostas, filtroTri])
 
   if(!auth){
@@ -272,25 +293,22 @@ export default function Geral(){
 
       {importLog && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-3 rounded-xl">{importLog}</div>}
 
-      {/* Filtros — padrão por turma, com opção visão geral */}
+      {/* Filtros — apenas por turma (sem visão geral) */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-slate-900">Visão:</span>
-            <div className="flex rounded-xl overflow-hidden border border-slate-300">
-              <button onClick={()=>{ if(turmas[0]) setFiltroTurma(turmas[0].nome) }} className={`px-3 py-1.5 text-xs font-medium ${filtroTurma!=='todas' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600'}`}>Por turma</button>
-              <button onClick={()=> setFiltroTurma('todas')} className={`px-3 py-1.5 text-xs font-medium ${filtroTurma==='todas' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600'}`}>Visão geral (todas)</button>
-            </div>
-            <span className="text-xs text-slate-500 hidden sm:inline">{filtroTurma==='todas' ? `${filteredAlunos.length} alunos • ${compsToShow.length} componentes` : `${filteredAlunos.length} alunos em ${filtroTurma}`}</span>
+            <span className="text-sm font-semibold text-slate-900">Turma</span>
+            <span className="text-xs bg-sky-100 text-sky-700 border border-sky-200 px-2.5 py-1 rounded-full font-medium">Turma {filtroTurma || turmas[0]?.nome || '—'}</span>
+            <span className="text-xs text-slate-500 hidden sm:inline">{filteredAlunos.length} alunos • {compsToShow.length} componentes</span>
           </div>
-          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${filtroTurma==='todas' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-sky-100 text-sky-700 border border-sky-200'}`}>{filtroTurma==='todas' ? 'Geral' : `Turma ${filtroTurma}`}</span>
+          <span className="text-xs text-slate-400 hidden sm:inline">Apenas por turma</span>
         </div>
         <div className="grid sm:grid-cols-5 gap-3">
           <div>
             <label className="text-xs font-medium text-slate-600">Turma</label>
-            <select value={filtroTurma} onChange={e=>setFiltroTurma(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
-              <option value="todas">Todas — Visão geral ({alunos.length})</option>
-              {turmas.map(t=> <option key={t.nome} value={t.nome}>{t.nome}</option>)}
+            <select value={filtroTurma || turmas[0]?.nome || ''} onChange={e=>setFiltroTurma(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+              {turmas.length===0 && <option value="">Nenhuma turma</option>}
+              {turmas.map(t=> <option key={t.nome} value={t.nome}>{t.nome} ({alunos.filter(a=>a.turma===t.nome).length})</option>)}
             </select>
           </div>
           <div>
@@ -322,8 +340,8 @@ export default function Geral(){
           <span className="bg-slate-100 px-2.5 py-1 rounded-full">{stats.filled}/{stats.totalCells} preenchidas • {stats.pct}%</span>
           <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> {stats.verdes} ótimas</span>
           <span className="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> {stats.amarelos} medianas</span>
-          <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-full flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> {stats.vermelhos} atenção (ruim ou alerta)</span>
-          <span className="bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full">💬 {stats.withObs} obs • 📚 {stats.withReforco} reforço</span>
+          <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-full flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> {stats.vermelhos} atenção</span>
+          <span className="bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full">💬 {stats.withObs} obs • 📚 {stats.withReforco} reforço • 💜 {stats.withApoio} apoio • 🧠 {stats.withBemEstar} bem-estar</span>
           <button onClick={()=>{sessionStorage.removeItem('sm_geral_auth'); setAuth(false)}} className="ml-auto text-slate-500 hover:text-slate-700">Sair</button>
         </div>
       </div>
@@ -379,19 +397,9 @@ export default function Geral(){
           <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-200 border border-emerald-300"></span> Ótima (verde) — todos Sim e sem alertas</span>
             <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-amber-200 border border-amber-300"></span> Mediana (amarelo) — algum Parcial</span>
-            <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-200 border border-red-300"></span> Atenção (vermelho) — ruim (Não) ou alerta (intervenção/comportamento/reforço)</span>
-            <span className="ml-auto hidden sm:inline">Clique no aluno para detalhes</span>
+            <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-200 border border-red-300"></span> Atenção (vermelho) — Não ou alerta (frequência/convivência/bem-estar/reforço/apoio)</span>
+            <span className="ml-auto hidden sm:inline">Clique no aluno para detalhes • {filteredAlunos.length} alunos em {filtroTurma || turmas[0]?.nome || '—'}</span>
           </div>
-          {totalPaginas>1 && (
-            <div className="px-4 py-3 bg-white border-t border-slate-200 flex items-center justify-between">
-              <span className="text-xs text-slate-500">Página {paginaSafe} de {totalPaginas} • {filteredAlunos.length} alunos • {filteredAlunos.length>porPagina ? `mostrando ${alunosPaginados.length}` : ''}</span>
-              <div className="flex gap-1">
-                <button disabled={paginaSafe<=1} onClick={()=>setPagina(p=>Math.max(1,p-1))} className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs disabled:opacity-40 hover:bg-slate-50">‹ Anterior</button>
-                <span className="px-3 py-1.5 text-xs bg-slate-900 text-white rounded-lg">{paginaSafe}</span>
-                <button disabled={paginaSafe>=totalPaginas} onClick={()=>setPagina(p=>Math.min(totalPaginas,p+1))} className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs disabled:opacity-40 hover:bg-slate-50">Próxima ›</button>
-              </div>
-            </div>
-          )}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -411,9 +419,10 @@ export default function Geral(){
                     <div className="mt-3 flex flex-wrap gap-2">
                       {comps.map(({c, cell})=> {
                         const dot = cell.cor==='emerald' ? 'bg-emerald-500' : cell.cor==='amber' ? 'bg-amber-500' : cell.cor==='red' ? 'bg-red-500' : 'bg-slate-400'
+                        const d=cell.r.dados
                         return (
                           <span key={c} className={`inline-flex items-center gap-1 border px-2.5 py-1 rounded-full text-xs ${cell.cor==='emerald' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : cell.cor==='amber' ? 'bg-amber-50 border-amber-200 text-amber-700' : cell.cor==='red' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                            <span className={`w-2 h-2 rounded-full ${dot}`}></span><strong>{c}</strong> <span>• {cell.label}</span> {cell.temAlerta && '⚠️'} {cell.r.dados.observacoes && <span title={cell.r.dados.observacoes}>💬</span>} {cell.r.dados.reforco && '📚'}
+                            <span className={`w-2 h-2 rounded-full ${dot}`}></span><strong>{c}</strong> <span>• {cell.label}</span> {cell.temAlerta && '⚠️'} {cell.r.dados.observacoes && <span title={d.observacoes}>💬</span>} {d.reforco && '📚'} {d.apoio && '💜'} {d.familia && '👨‍👩‍👧'} {d.bemEstar && '🧠'}
                           </span>
                         )
                       })}
@@ -423,16 +432,6 @@ export default function Geral(){
               )
             })}
           </div>
-          {totalPaginas>1 && (
-            <div className="px-4 py-3 bg-white border-t border-slate-200 flex items-center justify-between">
-              <span className="text-xs text-slate-500">Página {paginaSafe} de {totalPaginas} • {filteredAlunos.length} alunos</span>
-              <div className="flex gap-1">
-                <button disabled={paginaSafe<=1} onClick={()=>setPagina(p=>Math.max(1,p-1))} className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs disabled:opacity-40 hover:bg-slate-50">‹ Anterior</button>
-                <span className="px-3 py-1.5 text-xs bg-slate-900 text-white rounded-lg">{paginaSafe}</span>
-                <button disabled={paginaSafe>=totalPaginas} onClick={()=>setPagina(p=>Math.min(totalPaginas,p+1))} className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs disabled:opacity-40 hover:bg-slate-50">Próxima ›</button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -467,28 +466,31 @@ export default function Geral(){
                     <div className="p-4 grid sm:grid-cols-2 gap-3 text-sm">
                       <div className="space-y-1">
                         <div><strong>Aproveitamento:</strong> {d.aproveitamento||'—'}</div>
-                        <div><strong>Participação:</strong> {d.participacao||'—'}</div>
-                        <div><strong>Prazos:</strong> {d.cumprimento||'—'}</div>
-                        <div><strong>Progresso:</strong> {d.progresso||'—'}</div>
-                        <div><strong>Colaboração:</strong> {d.colaboracao||'—'}</div>
-                        <div><strong>Proatividade:</strong> {d.proatividade||'—'}</div>
-                        <div><strong>Concentração:</strong> {d.concentracao||'—'}</div>
+                        <div><strong>Engajamento:</strong> {d.engajamento || d.participacao || d.proatividade ||'—'}</div>
+                        <div><strong>Organização:</strong> {d.organizacao || d.cumprimento || d.colaboracao ||'—'}</div>
+                        <div><strong>Atenção:</strong> {d.concentracao||'—'}</div>
+                        <div><strong>Frequência:</strong> {d.assiduidade||'—'}</div>
+                        <div><strong>Convivência:</strong> {d.convivencia||'—'}</div>
+                        <div><strong>Evolução:</strong> {d.evolucao || d.progresso ||'—'}</div>
+                        {d.bemEstar && <div><strong>Bem-estar:</strong> <span className="bg-violet-100 text-violet-800 px-2 py-0.5 rounded-full text-xs">{d.bemEstar}</span></div>}
                       </div>
                       <div className="space-y-1">
-                        <div><strong>Nec. intervenção:</strong> {d.necessidade||'—'}</div>
-                        <div><strong>Respostas positivas:</strong> {d.respostasPositivas||'—'}</div>
+                        <div><strong>Encaminhamentos:</strong> { [d.reforco&&'Reforço', d.apoio&&'Apoio', d.familia&&'Família'].filter(Boolean).join(', ') || '—'}</div>
+                        {d.motivo && <div className="text-xs text-slate-600"><strong>Motivo:</strong> {d.motivo}</div>}
+                        {(d.necessidade || d.respostasPositivas) && <div className="text-xs text-slate-400">Legado: Nec. {d.necessidade||'—'} • Resp. {d.respostasPositivas||'—'}</div>}
                         <div className="pt-2 border-t border-slate-100 mt-2">
-                          <div className="text-xs font-semibold text-slate-600">Comportamento:</div>
+                          <div className="text-xs font-semibold text-slate-600">Ações:</div>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {d.conversei && <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs">Conversei</span>}
                             {d.disciplinar && <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-xs">Disc.</span>}
                             {d.educacional && <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full text-xs">Educ.</span>}
                             {d.comunicado && <span className="bg-violet-100 text-violet-800 px-2 py-0.5 rounded-full text-xs">Comunicado</span>}
-                            {d.tirei && <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full text-xs">Tirei sala</span>}
+                            {d.tirei && <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full text-xs">Tirei sala (legado)</span>}
                             {!d.conversei && !d.disciplinar && !d.educacional && !d.comunicado && !d.tirei && <span className="text-slate-400 text-xs">Nenhuma ação</span>}
                           </div>
                           {d.observacoes && <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-sm text-amber-900">💬 {d.observacoes}</div>}
-                          {d.reforco && <div className="mt-2 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-sm text-emerald-900">📚 Reforço: {d.motivo || 'Sem motivo detalhado'}</div>}
+                          {(d.reforco || d.apoio || d.familia) && <div className="mt-2 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-sm text-emerald-900">📚 {d.reforco?'Reforço':''} {d.apoio?'• Apoio':''} {d.familia?'• Família':''} {d.motivo ? `: ${d.motivo}` : ': sem detalhe'}</div>}
+                          {d.bemEstar && <div className="mt-2 bg-violet-50 border border-violet-200 rounded-xl p-2.5 text-sm text-violet-900">🧠 Bem-estar: {d.bemEstar}</div>}
                         </div>
                       </div>
                     </div>
@@ -510,7 +512,7 @@ export default function Geral(){
                     const d=r.dados||{}
                     return {
                       'TURMA':r.turma,'NOME DO ALUNO':r.alunoNome,'Trimestre':r.trimestre,'Componente Curricular':r.componente,
-                      'Aproveitamento da disciplina':d.aproveitamento||'','Participação em sala':d.participacao||'','Cumprimento dos prazos de entrega':d.cumprimento||'','Progresso em relação a si mesmo':d.progresso||'','Colaboração em atividades de grupo':d.colaboracao||'','Proatividade':d.proatividade||'','Concentração em sala':d.concentracao||'','Necessidade de intervenção pedagógica':d.necessidade||'','Respostas positivas às intervenções pedagógicas já aplicadas':d.respostasPositivas||'','Observações nas questões de comportamento':d.observacoes||'','Conversei particularmente com o(a) aluno (a)':d.conversei||'','Encaminhei para Orientação Disciplinar':d.disciplinar||'','Encaminhei para Orientação Educacional':d.educacional||'','Dei comunicado':d.comunicado||'','Tirei de sala':d.tirei||'','Não realizei intervenção sobre o comportamento do aluno(a)':d.naoIntervim||'','Encaminhado para aula(s) de reforço':d.reforco||'','Motivo do encaminhamento para reforço (campo cognitivo)':d.motivo||''
+                      'Aproveitamento':d.aproveitamento||'','Engajamento e participação':d.engajamento||d.participacao||d.proatividade||'','Organização e entregas':d.organizacao||d.cumprimento||d.colaboracao||'','Atenção e foco':d.concentracao||'','Frequência e pontualidade':d.assiduidade||'','Convivência e respeito':d.convivencia||'','Evolução no trimestre':d.evolucao||d.progresso||'','Sinais de bem-estar observáveis':d.bemEstar||'','Observações':d.observacoes||'','Conversei particularmente com o(a) aluno (a)':d.conversei||'','Dei comunicado':d.comunicado||'','Encaminhei para Orientação Disciplinar':d.disciplinar||'','Encaminhei para Orientação Educacional':d.educacional||'','Tirei de sala':d.tirei||'','Encaminhado para reforço de conteúdo':d.reforco||'','Apoio orientação / socioemocional':d.apoio||'','Conversa com família':d.familia||'','Motivo do encaminhamento':d.motivo||''
                     }
                   }))
                   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${selectedAluno.turma}-${selectedAluno.nome}-GERAL.csv`; a.click()

@@ -226,14 +226,25 @@ export function importRespostasFromRows(rows, fallbackTurma) {
       if(al) numeroFinal = al.numero
       else continue
     }
+    const engajamentoImport = getField(row, 'Engajamento') || getField(row, 'Participação')|| getField(row, 'Participa')|| getField(row, 'Proatividade')||''
+    const organizacaoImport = getField(row, 'Organização') || getField(row, 'Organizacao') || getField(row, 'Cumprimento')|| getField(row, 'Colaboração')|| getField(row, 'Colaboracao')||''
+    const evolucaoImport = getField(row, 'Evolução') || getField(row, 'Evolucao') || getField(row, 'Progresso')||''
+    const bemEstarImport = getField(row, 'Bem-estar') || getField(row, 'Bem estar') || getField(row, 'Sinais de bem-estar')||''
     const dados = {
       aproveitamento: getField(row, 'Aproveitamento')||'',
+      engajamento: engajamentoImport,
+      organizacao: organizacaoImport,
+      concentracao: getField(row, 'Concentração')|| getField(row, 'Concentra')|| getField(row, 'Atenção')||'',
+      assiduidade: getField(row, 'Frequência')|| getField(row, 'Frequencia')|| getField(row, 'Assiduidade')||'',
+      convivencia: getField(row, 'Convivência')|| getField(row, 'Convivencia')||'',
+      bemEstar: bemEstarImport,
+      evolucao: evolucaoImport,
+      // legado mantido para leitura Geral antiga
       participacao: getField(row, 'Participação')|| getField(row, 'Participa')||'',
       cumprimento: getField(row, 'Cumprimento')||'',
-      progresso: getField(row, 'Progresso')||'',
       colaboracao: getField(row, 'Colaboração')|| getField(row, 'Colaboracao')||'',
       proatividade: getField(row, 'Proatividade')||'',
-      concentracao: getField(row, 'Concentração')|| getField(row, 'Concentra')||'',
+      progresso: getField(row, 'Progresso')||'',
       necessidade: getField(row, 'Necessidade de intervenção')|| getField(row, 'Necessidade')||'',
       respostasPositivas: getField(row, 'Respostas positivas')||'',
       observacoes: getField(row, 'Observações')|| getField(row, 'Observa')||'',
@@ -243,7 +254,9 @@ export function importRespostasFromRows(rows, fallbackTurma) {
       comunicado: getField(row, 'Comunicado')||'',
       tirei: getField(row, 'Tirei de sala')||'',
       naoIntervim: getField(row, 'Não realizei')|| getField(row, 'Nao realizei')||'',
-      reforco: getField(row, 'Encaminhado para aula')|| getField(row, 'reforço')|| getField(row, 'reforco')||'',
+      reforco: getField(row, 'Encaminhado para aula')|| getField(row, 'reforço')|| getField(row, 'reforco')|| getField(row, 'Reforço de conteúdo')||'',
+      apoio: getField(row, 'Apoio')|| getField(row, 'socioemocional')||'',
+      familia: getField(row, 'Família')|| getField(row, 'Familia')|| getField(row, 'Conversa com família')||'',
       motivo: getField(row, 'Motivo')||'',
     }
     const has = Object.values(dados).some(v=> String(v).trim()!=='')

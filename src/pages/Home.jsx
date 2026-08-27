@@ -67,31 +67,30 @@ export default function Home() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">Novidade: 1 link por professor ✨</h2>
-          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">Antes: 126 links → Agora: ~21 links</span>
+        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
+          <h2 className="font-semibold text-slate-900 text-sm">1 link por professor ✨ <span className="font-normal text-slate-500 hidden sm:inline">— setup único feito em /admin</span></h2>
+          <span className="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium shrink-0">126 → ~21 links</span>
         </div>
-        <div className="p-6">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl border-2 border-sky-500 bg-sky-50">
-              <div className="text-sm font-bold text-sky-900">✅ Recomendado: Hub por Professor</div>
-              <div className="text-xs text-sky-700 mt-1">Prof. de GEO recebe 1 link e vê 1A, 2A, 3A por abas. Exemplo:</div>
-              <div className="mt-2 bg-white border border-sky-200 rounded-xl p-3 font-mono text-xs text-slate-600 truncate">/prof/AB12CD-XYZ → Hub GEO • 1A • 2A • 3A</div>
-              <Link to="/admin" className="mt-3 inline-block text-xs bg-sky-600 text-white px-3 py-1.5 rounded-lg">Criar professores →</Link>
+        <div className="p-4">
+          <div className="grid md:grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl border-2 border-sky-500 bg-sky-50">
+              <div className="text-xs font-bold text-sky-900">✅ Hub por Professor</div>
+              <div className="text-[11px] text-sky-700 mt-0.5">1 link agrega todas as turmas dele (ex: GEO → 1A, 2A, 3A por abas)</div>
+              <div className="mt-2 bg-white border border-sky-200 rounded-lg px-2.5 py-1.5 font-mono text-[11px] text-slate-600 truncate">/prof/AB12CD-XYZ → Hub GEO • 1A • 2A • 3A</div>
             </div>
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
-              <div className="text-sm font-bold text-slate-900">📦 Alternativa: Agregado por Componente</div>
-              <div className="text-xs text-slate-500 mt-1">Se ainda não cadastrou professores, use 1 link por matéria cobrindo todas as turmas:</div>
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+              <div className="text-xs font-bold text-slate-900">📦 Agregado por Componente</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Fallback se ainda não cadastrou professores — 1 link por matéria</div>
               <div className="mt-2 grid grid-cols-3 gap-1">
                 {componentes.slice(0,6).map(c=> (
-                  <Link key={c} to={`/hub?comp=${encodeURIComponent(c)}&tri=${config.trimestre}&token=${config.senha}`} className="text-[11px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-center hover:border-sky-300 hover:bg-sky-50 truncate">{c}</Link>
+                  <Link key={c} to={`/hub?comp=${encodeURIComponent(c)}&tri=${config.trimestre}&token=${config.senha}`} className="text-[11px] bg-white border border-slate-200 rounded-lg px-2 py-1 text-center hover:border-sky-300 hover:bg-sky-50 truncate">{c}</Link>
                 ))}
               </div>
-              <div className="text-[11px] text-slate-400 mt-2">{componentes.length} componentes • {turmas.length} turmas cada</div>
             </div>
           </div>
-          <div className="mt-5 flex justify-center">
-            <Link to="/admin" className="text-sm bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-black">Gerenciar professores e links →</Link>
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-[11px] text-slate-400 hidden sm:inline">{componentes.length} componentes • {turmas.length} turmas • links gerenciados em Coordenação</span>
+            <Link to="/admin" className="text-xs bg-slate-900 text-white px-3.5 py-1.5 rounded-xl hover:bg-black ml-auto">Gerenciar professores →</Link>
           </div>
         </div>
       </div>

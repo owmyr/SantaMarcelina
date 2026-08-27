@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react'
 import { getTurmas, setTurmas, getComponentes, setComponentes, getAlunos, setAlunos, getConfig, setConfig, importAlunosFromRows, importRespostasFromRows, getProfessores, addProfessor, removeProfessor } from '../lib/storage'
 import { gerarMockAlunosPorTurma, gerarMockProfessoresUmPorMateria, gerarMockRespostasAmostra, gerarMockRespostasGeralCompleto, seedMockDataCompleto, resetMockData } from '../lib/mockData.js'
+import { isSupabaseConfigured } from '../lib/supabase.js'
 import Papa from 'papaparse'
 import { parseCSVFile } from '../lib/csv'
 import { z } from 'zod'
+
+function encodeProfData(p){
+  try{
+    const json = JSON.stringify({ nome: p.nome, componente: p.componente, turmas: p.turmas })
+    return btoa(unescape(encodeURIComponent(json)))
+  }catch{ return '' }
+}
 
 const alunoSchema = z.object({
   turma: z.string().regex(/^[0-9][A-Z]$/, 'Turma deve ser ex: 9A, 1B'),
@@ -39,6 +47,7 @@ export default function Admin() {
   const [profTurmas, setProfTurmas] = useState([])
   const [alunoError, setAlunoError] = useState('')
   const [profError, setProfError] = useState('')
+  const [showProfForm, setShowProfForm] = useState(false)
 
   useEffect(()=>{
     refresh()
@@ -164,7 +173,10 @@ export default function Admin() {
     const p = addProfessor({ nome: profNome.trim(), componente: profComp, turmas: profTurmas })
     refresh()
     setProfNome(''); setProfComp(''); setProfTurmas([])
-    setImportLog(`Professor "${p.nome}" criado! Link: ${window.location.origin}/prof/${p.token}`)
+    setShowProfForm(false)
+    const base = `${window.location.origin}/prof/${p.token}?tri=${getConfig().trimestre}`
+    const link = `${base}&d=${encodeURIComponent(encodeProfData(p))}`
+    setImportLog(`Professor "${p.nome}" criado! Link: ${link}${!isSupabaseConfigured ? ' (com &d= codificado — funciona em outro navegador mesmo sem backend)' : ' (com &d= fallback)'}`)
   }
   const handleAutoGenerateProfessores = ()=>{
     if(!confirm('Gerar automaticamente 1 professor por componente com TODAS as turmas? (Você pode editar depois)')) return
@@ -183,12 +195,12 @@ export default function Admin() {
 
   const filteredAlunos = filterTurma==='todas' ? alunos : alunos.filter(a=>a.turma===filterTurma)
 
-  // links
-  const profLinks = professores.map(p=> ({
-    ...p,
-    url: `${window.location.origin}/prof/${p.token}?tri=${config.trimestre}`,
-    alunos: p.turmas.reduce((acc,t)=> acc + getAlunos().filter(a=>a.turma===t).length, 0)
-  }))
+  // links — sempre inclui &d= codificado como fallback cross-browser (funciona mesmo se Supabase falhar ou link antigo)
+  const profLinks = professores.map(p=> {
+    const base = `${window.location.origin}/prof/${p.token}?tri=${config.trimestre}`
+    const url = `${base}&d=${encodeURIComponent(encodeProfData(p))}`
+    return { ...p, url, alunos: p.turmas.reduce((acc,t)=> acc + getAlunos().filter(a=>a.turma===t).length, 0) }
+  })
   const agregadoPorComponente = componentes.map(c=> ({
     componente: c,
     turmas: turmas.map(t=>t.nome),
@@ -237,60 +249,72 @@ export default function Admin() {
       </div>
 
       {importLog && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm p-3 rounded-xl">{importLog}</div>}
+      {!isSupabaseConfigured && <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-4 py-3 rounded-xl">⚠️ Backend não configurado (sem <code>VITE_SUPABASE_URL</code>). Em produção na Vercel, configure <code>Settings → Environment Variables</code> com URL e anon key do Supabase e execute <code>supabase/schema.sql</code>. Em modo local, links gerados já incluem <code>&d=</code> codificado e funcionam em outro navegador, mas respostas só sincronizam após configurar backend.</div>}
 
       {/* TAB: Professores */}
       {activeTab==='professores' && (
-        <div className="space-y-6">
-          <div className="bg-gradient-to-br from-sky-600 to-indigo-700 rounded-2xl p-6 text-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-white/10"></div>
-            <div className="relative">
-              <h2 className="text-xl font-bold">👩‍🏫 Professores — 1 link resolve várias turmas</h2>
-              <p className="text-sky-100 text-sm mt-1 max-w-3xl">Cada professor recebe <strong>um único link</strong> que já abre TODAS as turmas dele. Ex: Prof. de GEO que dá aula em 1A, 2A e 3A recebe 1 link e dentro dele alterna as turmas por abas. Chega de 5 links por professor!</p>
-              <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
-                <div className="bg-white/15 backdrop-blur rounded-xl p-3"><div className="font-bold text-lg">{professores.length}</div><div className="text-sky-100">Professores cadastrados</div></div>
-                <div className="bg-white/15 backdrop-blur rounded-xl p-3"><div className="font-bold text-lg">{turmas.length} turmas</div><div className="text-sky-100">9A, 9B, 1A, 1B, 2A, 3A</div></div>
-                <div className="bg-white/15 backdrop-blur rounded-xl p-3"><div className="font-bold text-lg">21 → {professores.length || '?'}</div><div className="text-sky-100">links (antes 126)</div></div>
+        <div className="space-y-4">
+          {/* Compact header — cadastro é setup raro, não ocupa espaço principal */}
+          <div className="bg-white rounded-2xl border border-slate-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700 shrink-0">👩‍🏫</div>
+              <div className="min-w-0">
+                <h2 className="font-semibold text-slate-900 leading-none">Professores</h2>
+                <p className="text-xs text-slate-500 mt-1 truncate">{professores.length} cadastrados • {turmas.length} turmas • 1 link por professor agrega todas as turmas dele</p>
               </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="hidden sm:inline text-xs text-slate-400 mr-1">Setup único</span>
+              <button onClick={()=>setShowProfForm(v=>!v)} className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${showProfForm ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'}`}>
+                {showProfForm ? '✕ Fechar' : '＋ Novo professor'}
+              </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h3 className="font-semibold text-slate-900 mb-4">➕ Cadastrar professor</h3>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-xs font-medium text-slate-600">Nome do professor</label>
-                <input value={profNome} onChange={e=>setProfNome(e.target.value)} placeholder="Ex: Maria Silva" className="mt-1 w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm" />
+          {/* Collapsible creation — raro, fica escondido por padrão */}
+          {showProfForm && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 animate-in">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-slate-900 text-sm">Cadastrar professor</h3>
+                <span className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full">Cadastro único — depois use a lista abaixo</span>
               </div>
-              <div>
-                <label className="text-xs font-medium text-slate-600">Componente</label>
-                <select value={profComp} onChange={e=>setProfComp(e.target.value)} className="mt-1 w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm">
-                  <option value="">Selecione</option>
-                  {componentes.map(c=> <option key={c} value={c}>{c}</option>)}
-                </select>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-slate-600">Nome do professor</label>
+                  <input value={profNome} onChange={e=>setProfNome(e.target.value)} placeholder="Ex: Maria Silva" className="mt-1 w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600">Componente</label>
+                  <select value={profComp} onChange={e=>setProfComp(e.target.value)} className="mt-1 w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm">
+                    <option value="">Selecione</option>
+                    {componentes.map(c=> <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button onClick={handleAddProfessor} className="w-full bg-sky-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-sky-700">Criar professor + Gerar link único</button>
+                </div>
               </div>
-              <div className="flex items-end">
-                <button onClick={handleAddProfessor} className="w-full bg-sky-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-sky-700">Criar professor + Gerar link único</button>
+              <div className="mt-4">
+                <label className="text-xs font-medium text-slate-600">Turmas que este professor leciona (marque várias)</label>
+                <div className="mt-2 grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {turmas.map(t=> (
+                    <label key={t.nome} className={`flex items-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer transition ${profTurmas.includes(t.nome) ? 'border-sky-500 bg-sky-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                      <input type="checkbox" checked={profTurmas.includes(t.nome)} onChange={()=>toggleProfTurma(t.nome)} className="rounded border-slate-300 text-sky-600" />
+                      <span className="text-sm font-medium">{t.nome}</span>
+                      <span className="text-xs text-slate-500">({getAlunos().filter(a=>a.turma===t.nome).length})</span>
+                    </label>
+                  ))}
+                </div>
+                {profTurmas.length>0 && <p className="text-xs text-emerald-700 mt-2">✓ Selecionadas: {profTurmas.join(', ')} • {profTurmas.reduce((acc,t)=> acc + getAlunos().filter(a=>a.turma===t).length,0)} alunos no total</p>}
+                {profError && <div className="mt-3 text-xs bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl" role="alert">{profError}</div>}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2 pt-4 border-t border-slate-100">
+                <button onClick={handleAutoGenerateProfessores} className="text-xs border border-slate-200 bg-white text-slate-600 px-3 py-1.5 rounded-full hover:bg-slate-50">⚡ Gerar automaticamente 1 por componente ({componentes.length})</button>
+                <span className="text-[11px] text-slate-400">Cria {componentes.length} links cobrindo todas as turmas — edite nomes depois</span>
+                <button onClick={()=>setShowProfForm(false)} className="ml-auto text-xs text-slate-500 hover:text-slate-700">Cancelar</button>
               </div>
             </div>
-            <div className="mt-4">
-              <label className="text-xs font-medium text-slate-600">Turmas que este professor leciona (marque várias)</label>
-              <div className="mt-2 grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {turmas.map(t=> (
-                  <label key={t.nome} className={`flex items-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition ${profTurmas.includes(t.nome) ? 'border-sky-500 bg-sky-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                    <input type="checkbox" checked={profTurmas.includes(t.nome)} onChange={()=>toggleProfTurma(t.nome)} className="rounded border-slate-300 text-sky-600" />
-                    <span className="text-sm font-medium">{t.nome}</span>
-                    <span className="text-xs text-slate-500">({getAlunos().filter(a=>a.turma===t.nome).length})</span>
-                  </label>
-                ))}
-              </div>
-              {profTurmas.length>0 && <p className="text-xs text-emerald-700 mt-2">✓ Selecionadas: {profTurmas.join(', ')} • {profTurmas.reduce((acc,t)=> acc + getAlunos().filter(a=>a.turma===t).length,0)} alunos no total</p>}
-              {profError && <div className="mt-3 text-xs bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl" role="alert">{profError}</div>}
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button onClick={handleAutoGenerateProfessores} className="text-sm border border-amber-300 bg-amber-50 text-amber-800 px-4 py-2 rounded-xl hover:bg-amber-100">⚡ Gerar automaticamente 1 professor por componente</button>
-              <span className="text-xs text-slate-500 self-center">Cria 21 links agregados (1 por matéria) cobrindo todas as turmas</span>
-            </div>
-          </div>
+          )}
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">

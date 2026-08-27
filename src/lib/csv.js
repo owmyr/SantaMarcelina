@@ -3,11 +3,12 @@ import * as XLSX from 'xlsx'
 
 export const HEADERS = [
   'TURMA','NOME DO ALUNO','Trimestre','Componente Curricular',
-  'Aproveitamento da disciplina','Participação em sala','Cumprimento dos prazos de entrega','Progresso em relação a si mesmo','Colaboração em atividades de grupo','Proatividade','Concentração em sala',
-  'Necessidade de intervenção pedagógica','Respostas positivas às intervenções pedagógicas já aplicadas',
-  'Observações nas questões de comportamento',
-  'Conversei particularmente com o(a) aluno (a)','Encaminhei para Orientação Disciplinar','Encaminhei para Orientação Educacional','Dei comunicado','Tirei de sala','Não realizei intervenção sobre o comportamento do aluno(a)',
-  'Encaminhado para aula(s) de reforço','Motivo do encaminhamento para reforço (campo cognitivo)'
+  'Aproveitamento','Engajamento e participação','Organização e entregas','Atenção e foco',
+  'Frequência e pontualidade','Convivência e respeito',
+  'Evolução no trimestre','Sinais de bem-estar observáveis',
+  'Observações',
+  'Conversei particularmente com o(a) aluno (a)','Dei comunicado','Encaminhei para Orientação Disciplinar','Encaminhei para Orientação Educacional','Tirei de sala',
+  'Encaminhado para reforço de conteúdo','Apoio orientação / socioemocional','Conversa com família','Motivo do encaminhamento'
 ]
 
 // parse CSV file handling ISO-8859
@@ -43,32 +44,35 @@ export function parseCSVText(text) {
 
 export function respostasToCSVRows(respostas, alunosByTurma) {
   // respostas: array of {turma, componente, trimestre, alunoNumero, alunoNome, dados}
-  // If alunosByTurma provided, we can fill missing alunos with empty rows
   return respostas.map(r=>{
     const d = r.dados || {}
+    // compat: engajamento pode vir de participacao/proatividade legado; organizacao de cumprimento/colaboracao
+    const engajamento = d.engajamento || d.participacao || d.proatividade || ''
+    const organizacao = d.organizacao || d.cumprimento || d.colaboracao || ''
+    const evolucao = d.evolucao || d.progresso || ''
     return {
       'TURMA': r.turma,
       'NOME DO ALUNO': r.alunoNome,
       'Trimestre': r.trimestre,
       'Componente Curricular': r.componente,
-      'Aproveitamento da disciplina': d.aproveitamento||'',
-      'Participação em sala': d.participacao||'',
-      'Cumprimento dos prazos de entrega': d.cumprimento||'',
-      'Progresso em relação a si mesmo': d.progresso||'',
-      'Colaboração em atividades de grupo': d.colaboracao||'',
-      'Proatividade': d.proatividade||'',
-      'Concentração em sala': d.concentracao||'',
-      'Necessidade de intervenção pedagógica': d.necessidade||'',
-      'Respostas positivas às intervenções pedagógicas já aplicadas': d.respostasPositivas||'',
-      'Observações nas questões de comportamento': d.observacoes||'',
+      'Aproveitamento': d.aproveitamento||'',
+      'Engajamento e participação': engajamento,
+      'Organização e entregas': organizacao,
+      'Atenção e foco': d.concentracao||'',
+      'Frequência e pontualidade': d.assiduidade||'',
+      'Convivência e respeito': d.convivencia||'',
+      'Evolução no trimestre': evolucao,
+      'Sinais de bem-estar observáveis': d.bemEstar||'',
+      'Observações': d.observacoes||'',
       'Conversei particularmente com o(a) aluno (a)': d.conversei||'',
+      'Dei comunicado': d.comunicado||'',
       'Encaminhei para Orientação Disciplinar': d.disciplinar||'',
       'Encaminhei para Orientação Educacional': d.educacional||'',
-      'Dei comunicado': d.comunicado||'',
       'Tirei de sala': d.tirei||'',
-      'Não realizei intervenção sobre o comportamento do aluno(a)': d.naoIntervim||'',
-      'Encaminhado para aula(s) de reforço': d.reforco||'',
-      'Motivo do encaminhamento para reforço (campo cognitivo)': d.motivo||'',
+      'Encaminhado para reforço de conteúdo': d.reforco||'',
+      'Apoio orientação / socioemocional': d.apoio||'',
+      'Conversa com família': d.familia||'',
+      'Motivo do encaminhamento': d.motivo||'',
     }
   })
 }
@@ -107,15 +111,14 @@ export function exportGeralCSV(allRespostas, alunos, turmas, componentes, trimes
   // For completeness, if user wants full matrix empty rows:
   // we skip for now to keep file clean
   if (rows.length===0 && alunos.length>0) {
-    // create empty template
-    const turmaSample = turmas[0]?.nome || '1A'
+    // create empty template (novo modelo)
     const compSample = componentes[0] || 'HIS ART'
     rows = alunos.slice(0,1).map(a=> ({
       'TURMA': a.turma,
       'NOME DO ALUNO': a.nome,
       'Trimestre': trimestreFilter||'2TRI',
       'Componente Curricular': compSample,
-      'Aproveitamento da disciplina':'','Participação em sala':'','Cumprimento dos prazos de entrega':'','Progresso em relação a si mesmo':'','Colaboração em atividades de grupo':'','Proatividade':'','Concentração em sala':'','Necessidade de intervenção pedagógica':'','Respostas positivas às intervenções pedagógicas já aplicadas':'','Observações nas questões de comportamento':'','Conversei particularmente com o(a) aluno (a)':'','Encaminhei para Orientação Disciplinar':'','Encaminhei para Orientação Educacional':'','Dei comunicado':'','Tirei de sala':'','Não realizei intervenção sobre o comportamento do aluno(a)':'','Encaminhado para aula(s) de reforço':'','Motivo do encaminhamento para reforço (campo cognitivo)':''
+      'Aproveitamento':'','Engajamento e participação':'','Organização e entregas':'','Atenção e foco':'','Frequência e pontualidade':'','Convivência e respeito':'','Evolução no trimestre':'','Sinais de bem-estar observáveis':'','Observações':'','Conversei particularmente com o(a) aluno (a)':'','Dei comunicado':'','Encaminhei para Orientação Disciplinar':'','Encaminhei para Orientação Educacional':'','Tirei de sala':'','Encaminhado para reforço de conteúdo':'','Apoio orientação / socioemocional':'','Conversa com família':'','Motivo do encaminhamento':''
     }))
   }
   const csv = Papa.unparse(rows, { header:true })
