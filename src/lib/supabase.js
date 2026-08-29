@@ -35,9 +35,10 @@ async function flushQueue(){
   if(!isSupabaseConfigured || !online || queue.length===0) return
   const batch = [...queue]
   queue = []
+  let byTable = {}
   try{
     // group by table and deduplicate by primary key (evita 21000 duplicate constrained values quando professor muda 4 campos em <400ms)
-    const byTable = batch.reduce((acc, item)=>{
+    byTable = batch.reduce((acc, item)=>{
       if(!acc[item.table]) acc[item.table]=[]
       acc[item.table].push(item.data)
       return acc
@@ -73,9 +74,31 @@ async function flushQueue(){
     // notify local listeners that sync succeeded
     window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'synced', count: batch.length } }))
   }catch(e){
+    // 21000 = duplicate within batch — tenta fallback linha a linha
+    if(e.code==='21000'){
+      console.warn('[sync] 21000 duplicate, trying single-row fallback')
+      try{
+        for(const table in byTable){
+          let rows = byTable[table]
+          // já deduplicado acima, mas tenta 1 por 1
+          for(const row of rows){
+            const { error } = table==='respostas'
+              ? await supabase.from(table).upsert([row], { onConflict: 'turma,componente,trimestre,aluno_numero' })
+              : await supabase.from(table).upsert([row])
+            if(error) throw error
+          }
+        }
+        console.warn('[sync] single-row fallback succeeded')
+        window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'synced', count: batch.length } }))
+        return
+      }catch(e2){
+        console.warn('[sync] single-row fallback also failed', e2)
+        e = e2
+      }
+    }
     const details = { message: e.message, details: e.details, hint: e.hint, code: e.code, table: Object.keys(batch.reduce((a,b)=>{a[b.table]=true;return a},{})).join(',') }
     console.warn('[sync] flush failed, requeue', e, details, 'url:', url, 'key prefix:', anonKey ? anonKey.slice(0,12) : 'none')
-    console.warn('[sync] batch sample:', JSON.stringify(batch[0]).slice(0,600))
+    console.warn('[sync] batch sample:', JSON.stringify(batch[0]).slice(0,600), 'batch size:', batch.length)
     // requeue
     queue.unshift(...batch)
     window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'error', error: e.message, details: e.details, hint: e.hint, code: e.code } }))
