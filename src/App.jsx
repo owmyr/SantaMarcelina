@@ -13,10 +13,13 @@ import Geral from './pages/Geral'
 export default function App(){
   useEffect(()=>{
     initStorage()
-    if(getAlunos().length===0){
-      seedMockDataCompleto({ comAmostra: true })
-    } else if(getProfessores().length===0){
-      seedMockDataCompleto({ comAmostra: false })
+    // Apenas gera mock data automaticamente em modo local offline (sem backend Supabase)
+    if(!isSupabaseConfigured){
+      if(getAlunos().length===0){
+        seedMockDataCompleto({ comAmostra: true })
+      } else if(getProfessores().length===0){
+        seedMockDataCompleto({ comAmostra: false })
+      }
     }
 
     const notifySync = (status) => {

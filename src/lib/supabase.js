@@ -58,13 +58,13 @@ async function flushQueue(){
         const dedup = new Map()
         for(const r of rows) dedup.set(r.token || r.id, r)
         rows = [...dedup.values()]
-        const { error } = await supabase.from(table).upsert(rows)
+        const { error } = await supabase.from(table).upsert(rows, { onConflict: 'token' })
         if(error) throw error
       } else if(table==='alunos'){
         const dedup = new Map()
-        for(const r of rows) dedup.set(r.id, r)
+        for(const r of rows) dedup.set(`${r.turma}|${r.numero}`, r)
         rows = [...dedup.values()]
-        const { error } = await supabase.from(table).upsert(rows)
+        const { error } = await supabase.from(table).upsert(rows, { onConflict: 'turma,numero' })
         if(error) throw error
       } else {
         const { error } = await supabase.from(table).upsert(rows)
@@ -85,6 +85,10 @@ async function flushQueue(){
           for(const row of rows){
             const { error } = table==='respostas'
               ? await supabase.from(table).upsert([row], { onConflict: 'turma,componente,trimestre,aluno_numero' })
+              : table==='professores'
+              ? await supabase.from(table).upsert([row], { onConflict: 'token' })
+              : table==='alunos'
+              ? await supabase.from(table).upsert([row], { onConflict: 'turma,numero' })
               : await supabase.from(table).upsert([row])
             if(error) throw error
           }
@@ -97,14 +101,19 @@ async function flushQueue(){
         finalError = e2
       }
     }
-    const details = { message: finalError.message, details: finalError.details, hint: finalError.hint, code: finalError.code, table: Object.keys(batch.reduce((a,b)=>{a[b.table]=true;return a},{})).join(',') }
-    console.warn('[sync] flush failed, requeue', finalError, details, 'url:', url, 'key prefix:', anonKey ? anonKey.slice(0,12) : 'none')
+    const details = { message: finalError.message, details: finalError.details, hint: finalError.hint, code: finalError.code, status: finalError.status, table: Object.keys(batch.reduce((a,b)=>{a[b.table]=true;return a},{})).join(',') }
+    console.warn('[sync] flush failed:', finalError, details, 'url:', url, 'key prefix:', anonKey ? anonKey.slice(0,12) : 'none')
     console.warn('[sync] batch sample:', JSON.stringify(batch[0]).slice(0,600), 'batch size:', batch.length)
-    // requeue
-    queue.unshift(...batch)
+    
+    // Conflitos de chave (409 / 23505) ou bad request (400) não devem ser re-enfileirados em loop infinito
+    const isConflictOrClientError = finalError.status === 409 || finalError.code === '23505' || finalError.status === 400
+    if(!isConflictOrClientError){
+      queue.unshift(...batch)
+      setTimeout(flushQueue, 3000)
+    } else {
+      console.warn('[sync] lote com conflito/erro descartado para evitar loop 409:', details)
+    }
     window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'error', error: finalError.message, details: finalError.details, hint: finalError.hint, code: finalError.code } }))
-    // retry in 3s
-    setTimeout(flushQueue, 3000)
   }
 }
 
