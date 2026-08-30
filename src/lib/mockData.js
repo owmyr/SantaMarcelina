@@ -1,4 +1,4 @@
-import { getTurmas, getComponentes, getAlunos, setAlunos, getProfessores, setProfessores, addProfessor, upsertResposta, getAlunosByTurma, initStorage } from './storage.js'
+import { getTurmas, getComponentes, getAlunos, setAlunos, getProfessores, addProfessor, upsertResposta, initStorage } from './storage.js'
 
 // Brazilian first names and last names for realistic mock
 const PRIMEIROS_NOMES = [

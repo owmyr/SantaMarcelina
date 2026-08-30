@@ -1,21 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getTurmas, getComponentes, getAlunos, getConfig, getRespostas } from '../lib/storage'
 
 export default function Home() {
-  const [turmas, setTurmas] = useState([])
-  const [componentes, setComponentes] = useState([])
-  const [alunos, setAlunos] = useState([])
-  const [config, setConfig] = useState({ trimestre:'2TRI' })
-  const [respostas, setRespostasState] = useState([])
-
-  useEffect(()=>{
-    setTurmas(getTurmas())
-    setComponentes(getComponentes())
-    setAlunos(getAlunos())
-    setConfig(getConfig())
-    setRespostasState(getRespostas())
-  }, [])
+  const [turmas] = useState(() => getTurmas())
+  const [componentes] = useState(() => getComponentes())
+  const [alunos] = useState(() => getAlunos())
+  const [config] = useState(() => getConfig())
+  const [respostas] = useState(() => getRespostas())
 
   const totalAlunos = alunos.length
   const totalRespostas = respostas.length

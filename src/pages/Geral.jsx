@@ -1,50 +1,43 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { getAlunos, getTurmas, getComponentes, getRespostas, setRespostas, getConfig, classifyValor } from '../lib/storage'
-import { exportGeralCSV, exportToXLSX } from '../lib/csv'
+import { exportGeralCSV } from '../lib/csv'
 import Papa from 'papaparse'
 import { normalizeRow, extractAlunoInfo, extractDados } from '../lib/helpers'
 
 export default function Geral(){
-  const [alunos, setAlunos] = useState([])
-  const [turmas, setTurmasState] = useState([])
-  const [componentes, setComponentesState] = useState([])
-  const [respostas, setRespostasState] = useState([])
-  const [filtroTurma, setFiltroTurma] = useState('')
+  // Lazy initializers — chamados apenas uma vez no mount, evitam setState em useEffect
+  const [alunos, setAlunos] = useState(() => getAlunos())
+  const [turmas, setTurmasState] = useState(() => getTurmas())
+  const [componentes, setComponentesState] = useState(() => getComponentes())
+  const [respostas, setRespostasState] = useState(() => getRespostas())
+  const [filtroTurma, setFiltroTurma] = useState(() => getTurmas()[0]?.nome || '')
   const [filtroComp, setFiltroComp] = useState('todos')
-  const [filtroTri, setFiltroTri] = useState('')
+  const [filtroTri, setFiltroTri] = useState(() => getConfig().trimestre)
   const [busca, setBusca] = useState('')
   const [view, setView] = useState('matriz') // matriz | lista
   const [selectedAluno, setSelectedAluno] = useState(null)
-  const [auth, setAuth] = useState(false)
+  const [auth, setAuth] = useState(() => sessionStorage.getItem('sm_geral_auth') === '1')
   const [pwdInput, setPwdInput] = useState('')
   const [importLog, setImportLog] = useState('')
 
-  useEffect(()=>{
-    const t = getTurmas()
-    setAlunos(getAlunos())
-    setTurmasState(t)
-    setComponentesState(getComponentes())
+  // refresh deve ser declarado ANTES do useEffect de sync para evitar referência antes da declaração
+  const refresh = useCallback(()=>{
     setRespostasState(getRespostas())
-    setFiltroTri(getConfig().trimestre)
-    if(t.length>0) setFiltroTurma(t[0].nome) // default por turma (ex: 9A) — visão apenas por turma
-    const s = sessionStorage.getItem('sm_geral_auth')
-    if(s==='1') setAuth(true)
+    setAlunos(getAlunos())
+    setTurmasState(getTurmas())
+    setComponentesState(getComponentes())
   }, [])
 
   // Sync realtime: escuta atualizações de outras abas/professores e recarrega
   useEffect(()=>{
     // escuta BroadcastChannel + Supabase via supabase.js + storage events
-    let unsub1, unsub2, unsub3
+    let unsub1, unsub2
     import('../lib/supabase.js').then(m=>{
       unsub1 = m.subscribeRespostas((entry)=>{
         // entry pode ser single resposta ou array; atualiza local
         if(entry && entry.turma){
-          // single entry
-          setRespostasState(prev=>{
-            // evita stale closure usando getRespostas fresh
-            const all = getRespostas()
-            return [...all]
-          })
+          // single entry — re-read fresh from storage
+          setRespostasState(getRespostas())
         } else {
           refresh()
         }
@@ -65,17 +58,12 @@ export default function Geral(){
       window.removeEventListener('sm-respostas-updated', handler)
       window.removeEventListener('sm-bulk-sync', handler)
     }
-  }, [])
+  }, [refresh])
 
   const handleAuth = (e)=>{
     e.preventDefault()
     if(pwdInput===getConfig().senha){ setAuth(true); sessionStorage.setItem('sm_geral_auth','1')}
     else alert('Senha incorreta')
-  }
-
-  const refresh = ()=>{
-    setRespostasState(getRespostas())
-    setAlunos(getAlunos())
   }
 
   // import CSV/JSON
@@ -98,7 +86,8 @@ export default function Geral(){
             else all.push(r)
             added++
           }
-          setRespostas(all); added && (total+=added)
+          setRespostas(all)
+          if(added) total += added
         } else {
           // CSV
           const parsed = Papa.parse(text, {header:true, skipEmptyLines:true})
@@ -164,7 +153,7 @@ export default function Geral(){
     return componentes
   }, [componentes, filtroComp])
 
-  const getCell = (aluno, comp)=>{
+  const getCell = useCallback((aluno, comp)=>{
     const tri = filtroTri || getConfig().trimestre
     const r = respostasMap.get(`${aluno.turma}|${comp}|${tri}|${String(aluno.numero)}`)
     if(!r) return null
@@ -242,10 +231,9 @@ export default function Geral(){
     else if(performance==='otima') flags.push('🟢')
 
     return { r, count, flags, has:true, performance, temAlerta, temIntervencao, temComportamento, temReforco, temApoio, temFamilia, temBemEstar, temAssiduidadeAlerta, temConvivenciaAlerta, cor, label }
-  }
+  }, [filtroTri, respostasMap])
 
   const stats = useMemo(()=>{
-    const tri = filtroTri || getConfig().trimestre
     const totalCells = filteredAlunos.length * compsToShow.length
     let filled=0, withObs=0, withReforco=0, withApoio=0, withBemEstar=0, verdes=0, amarelos=0, vermelhos=0
     for(const a of filteredAlunos) for(const c of compsToShow){
@@ -260,7 +248,7 @@ export default function Geral(){
       else if(cell?.cor==='red') vermelhos++
     }
     return { totalCells, filled, pct: totalCells? Math.round(filled/totalCells*100):0, withObs, withReforco, withApoio, withBemEstar, verdes, amarelos, vermelhos }
-  }, [filteredAlunos, compsToShow, respostas, filtroTri])
+  }, [filteredAlunos, compsToShow, getCell])
 
   if(!auth){
     return (

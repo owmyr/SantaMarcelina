@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { getAlunosByTurma, getConfig, getResposta, upsertResposta } from '../lib/storage'
 import { exportToCSV, exportToXLSX } from '../lib/csv'
-import { CAMPOS, SegmentedField, BemEstarField, EvolucaoField, CheckBox } from '../components/FormFields.jsx'
+import { SegmentedField, BemEstarField, EvolucaoField, CheckBox } from '../components/FormFields.jsx'
+import { CAMPOS } from '../lib/fields.js'
 
 export default function Professor() {
   const [search] = useSearchParams()
@@ -16,19 +17,18 @@ export default function Professor() {
 
   const alunos = useMemo(()=> turma ? getAlunosByTurma(turma) : [], [turma])
   const [idx, setIdx] = useState(0)
-  const [dados, setDados] = useState({})
+  const aluno = alunos[idx]
+  const currentKey = `${turma}|${componente}|${trimestre}|${aluno?.numero}`
+  const [prevKey, setPrevKey] = useState(currentKey)
+  const [dados, setDados] = useState(() => aluno ? getResposta(turma, componente, trimestre, aluno.numero)?.dados || {} : {})
+  if (currentKey !== prevKey) {
+    setPrevKey(currentKey)
+    const res = aluno ? getResposta(turma, componente, trimestre, aluno.numero) : null
+    setDados(res?.dados || {})
+  }
   const [savedAt, setSavedAt] = useState(null)
   const [filter, setFilter] = useState('todos') // todos | pendentes | concluidos
   const [showResumo, setShowResumo] = useState(false)
-
-  const aluno = alunos[idx]
-
-  // load dados when aluno changes
-  useEffect(()=>{
-    if(!aluno) return
-    const res = getResposta(turma, componente, trimestre, aluno.numero)
-    setDados(res?.dados || {})
-  }, [aluno, turma, componente, trimestre])
 
   const saveTimeout = useRef(null)
   const pendingDataRef = useRef(null)
@@ -47,7 +47,7 @@ export default function Professor() {
     if(saveTimeout.current) clearTimeout(saveTimeout.current)
     const isText = key==='observacoes' || key==='motivo'
     saveTimeout.current = setTimeout(flushSave, isText ? 450 : 150)
-  }, [dados, aluno, turma, componente, trimestre, flushSave])
+  }, [dados, flushSave])
 
   useEffect(()=>()=>{ if(saveTimeout.current) clearTimeout(saveTimeout.current) }, [])
 
@@ -67,7 +67,7 @@ export default function Professor() {
       if(r && hasRequiredFilled(r.dados)) concluidos++
     }
     return { pct: Math.round(concluidos/alunos.length*100), concluidos }
-  }, [alunos, turma, componente, trimestre, dados, savedAt, hasRequiredFilled])
+  }, [alunos, turma, componente, trimestre, hasRequiredFilled])
 
   const filteredIndices = useMemo(()=>{
     const list = []
@@ -80,7 +80,7 @@ export default function Professor() {
       list.push({a, i, has, hasRequired})
     })
     return list
-  }, [alunos, filter, turma, componente, trimestre, savedAt, hasRequiredFilled])
+  }, [alunos, filter, turma, componente, trimestre, hasRequiredFilled])
 
   const handleExport = (type)=>{
     const todas = alunos.map(a=>{

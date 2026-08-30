@@ -1,47 +1,9 @@
 import { classifyValor } from '../lib/storage'
 
-export const CAMPOS = {
-  desempenho: [
-    { key: 'aproveitamento', label: 'Aproveitamento', hint: 'Rendimento no conteúdo' },
-    { key: 'engajamento', label: 'Engajamento e participação', hint: 'Participa, pergunta, toma iniciativa?' },
-    { key: 'organizacao', label: 'Organização e entregas', hint: 'Traz material, entrega em dia, colabora?' },
-    { key: 'concentracao', label: 'Atenção e foco', hint: 'Mantém foco? Dispersa/celular?' },
-  ],
-  presenca: [
-    { key: 'assiduidade', label: 'Frequência e pontualidade' },
-    { key: 'convivencia', label: 'Convivência e respeito' },
-  ],
-  sinais: [
-    { key: 'bemEstar', label: 'Sinais de bem-estar observáveis', hint: 'Ansiedade, apatia, agitação... (opcional)' },
-    { key: 'evolucao', label: 'Evolução no trimestre', hint: 'Melhorou, manteve ou piorou?' },
-  ],
-  comportamentoAcoes: [
-    { key: 'conversei', label: 'Conversei particularmente' },
-    { key: 'comunicado', label: 'Dei comunicado' },
-    { key: 'disciplinar', label: 'Encaminhei p/ Orient. Disciplinar' },
-    { key: 'educacional', label: 'Encaminhei p/ Orient. Educacional' },
-    { key: 'tirei', label: 'Tirei de sala' },
-  ],
-  encaminhamento: [
-    { key: 'reforco', label: 'Reforço de conteúdo' },
-    { key: 'apoio', label: 'Apoio orientação / socioemocional' },
-    { key: 'familia', label: 'Conversa com família' },
-  ]
-}
-
-// Legado: mapear chaves antigas para leitura
-export const LEGADO_MAP = {
-  participacao: 'engajamento',
-  proatividade: 'engajamento',
-  cumprimento: 'organizacao',
-  colaboracao: 'organizacao',
-  progresso: 'evolucao',
-}
-
 const OPCOES_SEGMENTED = [
   { value: '', label: '—', desc: 'Não avaliado', cls: 'bg-white border-slate-200 text-slate-500' },
   { value: 'SIM', label: 'Sim', desc: 'Adequado', cls: 'bg-emerald-500 text-white border-emerald-500 shadow' },
-  { value: 'PARCIAL', label: 'Parcial', desc: 'Em desenvolvimento', cls: 'bg-amber-400 text-white border-amber-400 shadow' },
+  { value: 'PARCIAL', label: 'Parcial', desc: 'Em desenvolvimento', cls: 'bg-amber-400 text-slate-900 border-amber-400 shadow' },
   { value: 'NÃO', label: 'Não', desc: 'Atenção', cls: 'bg-red-500 text-white border-red-500 shadow' },
 ]
 
@@ -49,37 +11,37 @@ const OPCOES_POR_CAMPO = {
   aproveitamento: [
     { value: '', label: '—', desc: 'Não avaliado', cls: 'bg-white border-slate-200 text-slate-500' },
     { value: 'SIM', label: 'Bom', desc: 'Adequado', cls: 'bg-emerald-500 text-white border-emerald-500 shadow' },
-    { value: 'PARCIAL', label: 'Regular', desc: 'Em desenvolvimento', cls: 'bg-amber-400 text-white border-amber-400 shadow' },
+    { value: 'PARCIAL', label: 'Regular', desc: 'Em desenvolvimento', cls: 'bg-amber-400 text-slate-900 border-amber-400 shadow' },
     { value: 'NÃO', label: 'Baixo', desc: 'Atenção', cls: 'bg-red-500 text-white border-red-500 shadow' },
   ],
   engajamento: [
     { value: '', label: '—', desc: 'Não avaliado', cls: 'bg-white border-slate-200 text-slate-500' },
     { value: 'SIM', label: 'Engajado', desc: 'Ativo', cls: 'bg-emerald-500 text-white border-emerald-500 shadow' },
-    { value: 'PARCIAL', label: 'Oscila', desc: 'Às vezes', cls: 'bg-amber-400 text-white border-amber-400 shadow' },
+    { value: 'PARCIAL', label: 'Oscila', desc: 'Às vezes', cls: 'bg-amber-400 text-slate-900 border-amber-400 shadow' },
     { value: 'NÃO', label: 'Apático', desc: 'Desengajado', cls: 'bg-red-500 text-white border-red-500 shadow' },
   ],
   organizacao: [
     { value: '', label: '—', desc: 'Não avaliado', cls: 'bg-white border-slate-200 text-slate-500' },
     { value: 'SIM', label: 'Em dia', desc: 'Organizado', cls: 'bg-emerald-500 text-white border-emerald-500 shadow' },
-    { value: 'PARCIAL', label: 'Irregular', desc: 'Oscila', cls: 'bg-amber-400 text-white border-amber-400 shadow' },
+    { value: 'PARCIAL', label: 'Irregular', desc: 'Oscila', cls: 'bg-amber-400 text-slate-900 border-amber-400 shadow' },
     { value: 'NÃO', label: 'Atrasado', desc: 'Não entrega', cls: 'bg-red-500 text-white border-red-500 shadow' },
   ],
   concentracao: [
     { value: '', label: '—', desc: 'Não avaliado', cls: 'bg-white border-slate-200 text-slate-500' },
     { value: 'SIM', label: 'Focado', desc: 'Mantém', cls: 'bg-emerald-500 text-white border-emerald-500 shadow' },
-    { value: 'PARCIAL', label: 'Oscila', desc: 'Intermitente', cls: 'bg-amber-400 text-white border-amber-400 shadow' },
+    { value: 'PARCIAL', label: 'Oscila', desc: 'Intermitente', cls: 'bg-amber-400 text-slate-900 border-amber-400 shadow' },
     { value: 'NÃO', label: 'Disperso', desc: 'Disperso', cls: 'bg-red-500 text-white border-red-500 shadow' },
   ],
   assiduidade: [
     { value: '', label: '—', desc: 'Não avaliado', cls: 'bg-white border-slate-200 text-slate-500' },
     { value: 'SIM', label: 'Assíduo', desc: 'Frequente', cls: 'bg-emerald-500 text-white border-emerald-500 shadow' },
-    { value: 'PARCIAL', label: 'Irregular', desc: 'Oscila', cls: 'bg-amber-400 text-white border-amber-400 shadow' },
+    { value: 'PARCIAL', label: 'Irregular', desc: 'Oscila', cls: 'bg-amber-400 text-slate-900 border-amber-400 shadow' },
     { value: 'NÃO', label: 'Faltante', desc: 'Faltas', cls: 'bg-red-500 text-white border-red-500 shadow' },
   ],
   convivencia: [
     { value: '', label: '—', desc: 'Não avaliado', cls: 'bg-white border-slate-200 text-slate-500' },
     { value: 'SIM', label: 'Boa', desc: 'Respeitosa', cls: 'bg-emerald-500 text-white border-emerald-500 shadow' },
-    { value: 'PARCIAL', label: 'Parcial', desc: 'Oscila', cls: 'bg-amber-400 text-white border-amber-400 shadow' },
+    { value: 'PARCIAL', label: 'Parcial', desc: 'Oscila', cls: 'bg-amber-400 text-slate-900 border-amber-400 shadow' },
     { value: 'NÃO', label: 'Conflituosa', desc: 'Atenção', cls: 'bg-red-500 text-white border-red-500 shadow' },
   ],
 }
@@ -109,7 +71,7 @@ const OPCOES_BINARIO_POSITIVA = [
   { value: 'NÃO', label: 'Não', desc: 'Sem resposta positiva', cls: 'bg-red-500 text-white border-red-500 shadow' },
 ]
 
-export function normalizeSegmentValue(v){
+function normalizeSegmentValue(v){
   if(!v || String(v).trim()==='') return ''
   const c = classifyValor(v)
   if(c==='sim') return 'SIM'
@@ -118,7 +80,7 @@ export function normalizeSegmentValue(v){
   if(String(v).trim().toUpperCase()==='X') return 'SIM'
   return String(v).trim().toUpperCase()
 }
-export function normalizeEvolucaoValue(v){
+function normalizeEvolucaoValue(v){
   if(!v || String(v).trim()==='') return ''
   const s = String(v).trim().toUpperCase()
   if(['MELHOROU','MELHOR','EVOLUIU','PROGREDIU','SIM'].includes(s)) return 'MELHOROU'
@@ -147,7 +109,7 @@ export function SegmentedField({ label, hint, value, onChange, required=false, f
           const active = norm===op.value
           return (
             <button key={op.value} type="button" aria-pressed={active} onClick={()=>onChange(op.value)} className={`px-2 py-2 rounded-xl border-2 text-xs font-semibold transition flex flex-col items-center gap-0.5 ${active ? op.cls : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}>
-              <span>{op.label}</span><span className={`text-[10px] leading-none ${active ? 'text-white/90' : 'text-slate-400'}`}>{op.desc}</span>
+              <span>{op.label}</span><span className={`text-[10px] leading-none ${active ? (op.value==='PARCIAL' ? 'text-slate-800 font-medium' : 'text-white/90') : 'text-slate-400'}`}>{op.desc}</span>
             </button>
           )
         })}

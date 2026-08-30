@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { getAlunosByTurma, getAlunos, getTurmas, getConfig, getResposta, upsertResposta, getProfessorByToken, getProfessores } from '../lib/storage'
+import { getAlunosByTurma, getTurmas, getConfig, getResposta, upsertResposta, getProfessorByToken, getProfessores } from '../lib/storage'
 import { exportToCSV, exportToXLSX } from '../lib/csv'
-import { CAMPOS, SegmentedField, BemEstarField, EvolucaoField, CheckBox } from '../components/FormFields.jsx'
+import { SegmentedField, BemEstarField, EvolucaoField, CheckBox } from '../components/FormFields.jsx'
+import { CAMPOS } from '../lib/fields.js'
 import { isSupabaseConfigured } from '../lib/supabase.js'
 
 function decodeProfData(encoded){
@@ -93,7 +94,6 @@ export default function ProfessorHub(){
 
     // se Supabase configurado, pode estar hidratando — aguarda bulk sync
     if(isSupabaseConfigured){
-      setProfLoading(true)
       const handler = ()=>{
         if(tryFind()){
           // encontrado após sync
@@ -112,36 +112,34 @@ export default function ProfessorHub(){
         window.removeEventListener('sm-sync-broadcast', handler)
         clearTimeout(t)
       }
-    } else {
-      // sem backend e sem d param: não há como recuperar
-      setProfLoading(false)
     }
-  }, [token, search])
+  }, [token, search, config.senha])
 
-  const [turmaAtiva, setTurmaAtiva] = useState('')
+  const [selectedTurma, setSelectedTurma] = useState('')
+  const turmaAtiva = selectedTurma && prof?.turmas?.includes(selectedTurma) ? selectedTurma : (prof?.turmas?.[0] || '')
   const [idx, setIdx] = useState(0)
-  const [dados, setDados] = useState({})
+  const setTurmaAtiva = useCallback((t)=>{
+    setSelectedTurma(t)
+    setIdx(0)
+  }, [])
   const [savedAt, setSavedAt] = useState(null)
   const [filter, setFilter] = useState('todos')
   const [showResumo, setShowResumo] = useState(false)
 
-  // init turmaAtiva
-  useEffect(()=>{
-    if(prof && prof.turmas.length>0 && !turmaAtiva){
-      setTurmaAtiva(prof.turmas[0])
-    }
-  }, [prof, turmaAtiva])
-
-  const alunos = useMemo(()=> turmaAtiva ? getAlunosByTurma(turmaAtiva) : [], [turmaAtiva, syncTick])
-  // reset idx when turma changes
-  useEffect(()=>{ setIdx(0) }, [turmaAtiva])
+  const alunos = useMemo(()=>{
+    void syncTick
+    return turmaAtiva ? getAlunosByTurma(turmaAtiva) : []
+  }, [turmaAtiva, syncTick])
   const aluno = alunos[idx]
 
-  useEffect(()=>{
-    if(!aluno || !prof) return
-    const res = getResposta(turmaAtiva, prof.componente, trimestre, aluno.numero)
+  const currentKey = `${turmaAtiva}|${prof?.componente}|${trimestre}|${aluno?.numero}`
+  const [prevKey, setPrevKey] = useState(currentKey)
+  const [dados, setDados] = useState(() => (aluno && prof) ? getResposta(turmaAtiva, prof.componente, trimestre, aluno.numero)?.dados || {} : {})
+  if (currentKey !== prevKey) {
+    setPrevKey(currentKey)
+    const res = (aluno && prof) ? getResposta(turmaAtiva, prof.componente, trimestre, aluno.numero) : null
     setDados(res?.dados || {})
-  }, [aluno, turmaAtiva, prof, trimestre])
+  }
 
   const saveTimeout = useRef(null)
   const pendingDataRef = useRef(null)
@@ -162,7 +160,7 @@ export default function ProfessorHub(){
     // segmented muda pouco, mas textarea beneficia de debounce
     const isText = key==='observacoes' || key==='motivo'
     saveTimeout.current = setTimeout(flushSave, isText ? 450 : 150)
-  }, [dados, aluno, prof, turmaAtiva, trimestre, flushSave])
+  }, [dados, flushSave])
 
   useEffect(()=>()=>{ if(saveTimeout.current) clearTimeout(saveTimeout.current) }, [])
 
@@ -175,6 +173,7 @@ export default function ProfessorHub(){
   }, [])
 
   const progressoGeral = useMemo(()=>{
+    void syncTick
     if(!prof) return { pct:0, total:0, concluidos:0, porTurma:{} }
     let total=0, concluidos=0
     const porTurma={}
@@ -190,9 +189,10 @@ export default function ProfessorHub(){
       concluidos+=c
     }
     return { total, concluidos, pct: total? Math.round(concluidos/total*100):0, porTurma }
-  }, [prof, trimestre, dados, savedAt, hasRequiredFilled])
+  }, [prof, trimestre, syncTick, hasRequiredFilled])
 
   const progressoTurma = useMemo(()=>{
+    void syncTick
     if(!turmaAtiva || !prof) return { pct:0, concluidos:0 }
     const al = getAlunosByTurma(turmaAtiva)
     let c=0
@@ -201,9 +201,10 @@ export default function ProfessorHub(){
       if(r && hasRequiredFilled(r.dados)) c++
     }
     return { pct: al.length? Math.round(c/al.length*100):0, concluidos:c, total: al.length }
-  }, [turmaAtiva, prof, trimestre, dados, savedAt, hasRequiredFilled])
+  }, [turmaAtiva, prof, trimestre, syncTick, hasRequiredFilled])
 
   const filteredIndices = useMemo(()=>{
+    void syncTick
     const list=[]
     alunos.forEach((a,i)=>{
       const r=getResposta(turmaAtiva, prof?.componente, trimestre, a.numero)
@@ -214,7 +215,7 @@ export default function ProfessorHub(){
       list.push({a,i,has, hasRequired})
     })
     return list
-  }, [alunos, filter, turmaAtiva, prof, trimestre, savedAt, hasRequiredFilled])
+  }, [alunos, filter, turmaAtiva, prof, trimestre, syncTick, hasRequiredFilled])
 
   const handleExportTurma = (type, turma)=>{
     const al = getAlunosByTurma(turma)

@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getTurmas, setTurmas, getComponentes, setComponentes, getAlunos, setAlunos, getConfig, setConfig, importAlunosFromRows, importRespostasFromRows, getProfessores, addProfessor, removeProfessor } from '../lib/storage'
 import { gerarMockAlunosPorTurma, gerarMockProfessoresUmPorMateria, gerarMockRespostasAmostra, gerarMockRespostasGeralCompleto, seedMockDataCompleto, resetMockData } from '../lib/mockData.js'
 import { isSupabaseConfigured } from '../lib/supabase.js'
-import Papa from 'papaparse'
 import { parseCSVFile } from '../lib/csv'
 import { z } from 'zod'
 
@@ -25,12 +24,13 @@ const professorSchema = z.object({
 })
 
 export default function Admin() {
-  const [turmas, setTurmasState] = useState([])
-  const [componentes, setComponentesState] = useState([])
-  const [alunos, setAlunosState] = useState([])
-  const [config, setConfigState] = useState({ senha:'santa2026', trimestre:'2TRI', ano:'2025'})
-  const [professores, setProfessoresState] = useState([])
-  const [activeTab, setActiveTab] = useState('professores') // geral | turmas | professores | links
+  // Lazy initializers evitam setState no useEffect de mount
+  const [turmas, setTurmasState] = useState(() => getTurmas())
+  const [componentes, setComponentesState] = useState(() => getComponentes())
+  const [alunos, setAlunosState] = useState(() => getAlunos())
+  const [config, setConfigState] = useState(() => getConfig())
+  const [professores, setProfessoresState] = useState(() => getProfessores())
+  const [activeTab, setActiveTab] = useState('professores')
   const [newTurma, setNewTurma] = useState('')
   const [newComp, setNewComp] = useState('')
   const [newAlunoTurma, setNewAlunoTurma] = useState('1A')
@@ -38,7 +38,7 @@ export default function Admin() {
   const [newAlunoNome, setNewAlunoNome] = useState('')
   const [filterTurma, setFilterTurma] = useState('todas')
   const [importLog, setImportLog] = useState('')
-  const [auth, setAuth] = useState(false)
+  const [auth, setAuth] = useState(() => sessionStorage.getItem('sm_admin_auth') === '1')
   const [pwdInput, setPwdInput] = useState('')
 
   // professor form
@@ -49,18 +49,24 @@ export default function Admin() {
   const [profError, setProfError] = useState('')
   const [showProfForm, setShowProfForm] = useState(false)
 
-  useEffect(()=>{
-    refresh()
-    const savedAuth = sessionStorage.getItem('sm_admin_auth')
-    if (savedAuth==='1') setAuth(true)
-  }, [])
-  const refresh = ()=>{
+  // refresh declarado antes do useEffect para evitar TDZ
+  const refresh = useCallback(()=>{
     setTurmasState(getTurmas())
     setComponentesState(getComponentes())
     setAlunosState(getAlunos())
     setConfigState(getConfig())
     setProfessoresState(getProfessores())
-  }
+  }, [])
+
+  useEffect(()=>{
+    // escuta eventos de sincronização externa (Supabase bulk sync)
+    window.addEventListener('sm-bulk-sync', refresh)
+    window.addEventListener('sm-respostas-updated', refresh)
+    return ()=>{
+      window.removeEventListener('sm-bulk-sync', refresh)
+      window.removeEventListener('sm-respostas-updated', refresh)
+    }
+  }, [refresh])
 
   const handleAuth = (e)=>{
     e.preventDefault()
@@ -201,15 +207,7 @@ export default function Admin() {
     const url = `${base}&d=${encodeURIComponent(encodeProfData(p))}`
     return { ...p, url, alunos: p.turmas.reduce((acc,t)=> acc + getAlunos().filter(a=>a.turma===t).length, 0) }
   })
-  const agregadoPorComponente = componentes.map(c=> ({
-    componente: c,
-    turmas: turmas.map(t=>t.nome),
-    url: `${window.location.origin}/prof/${config.senha}?comp=${encodeURIComponent(c)}&tri=${config.trimestre}&token=${config.senha}`,
-    // alternative hub aggregated: we will handle via /prof/:token with comp fallback, but for agregado we use /hub?comp=
-    hubUrl: `${window.location.origin}/hub?comp=${encodeURIComponent(c)}&tri=${config.trimestre}&token=${config.senha}`,
-    alunos: getAlunos().filter(a=> turmas.map(t=>t.nome).includes(a.turma)).length // total geral
-  }))
-  // For now agregado hub url will be same as prof hub with virtual professor, we create a virtual hub that accepts token=santa2026 + comp
+  
   const agregadoLinks = componentes.map(c=> ({
     componente: c,
     url: `${window.location.origin}/hub?comp=${encodeURIComponent(c)}&tri=${config.trimestre}&token=${config.senha}`,

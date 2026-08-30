@@ -74,6 +74,7 @@ async function flushQueue(){
     // notify local listeners that sync succeeded
     window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'synced', count: batch.length } }))
   }catch(e){
+    let finalError = e
     // 21000 = duplicate within batch — tenta fallback linha a linha
     if(e.code==='21000'){
       console.warn('[sync] 21000 duplicate, trying single-row fallback')
@@ -93,15 +94,15 @@ async function flushQueue(){
         return
       }catch(e2){
         console.warn('[sync] single-row fallback also failed', e2)
-        e = e2
+        finalError = e2
       }
     }
-    const details = { message: e.message, details: e.details, hint: e.hint, code: e.code, table: Object.keys(batch.reduce((a,b)=>{a[b.table]=true;return a},{})).join(',') }
-    console.warn('[sync] flush failed, requeue', e, details, 'url:', url, 'key prefix:', anonKey ? anonKey.slice(0,12) : 'none')
+    const details = { message: finalError.message, details: finalError.details, hint: finalError.hint, code: finalError.code, table: Object.keys(batch.reduce((a,b)=>{a[b.table]=true;return a},{})).join(',') }
+    console.warn('[sync] flush failed, requeue', finalError, details, 'url:', url, 'key prefix:', anonKey ? anonKey.slice(0,12) : 'none')
     console.warn('[sync] batch sample:', JSON.stringify(batch[0]).slice(0,600), 'batch size:', batch.length)
     // requeue
     queue.unshift(...batch)
-    window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'error', error: e.message, details: e.details, hint: e.hint, code: e.code } }))
+    window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status: 'error', error: finalError.message, details: finalError.details, hint: finalError.hint, code: finalError.code } }))
     // retry in 3s
     setTimeout(flushQueue, 3000)
   }

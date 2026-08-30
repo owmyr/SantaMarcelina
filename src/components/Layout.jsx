@@ -7,15 +7,14 @@ import logo from '../assets/santamarcelina.png'
 export default function Layout({ children }) {
   const loc = useLocation()
   const config = getConfig()
-  const isAdmin = loc.pathname.startsWith('/admin') || loc.pathname.startsWith('/geral')
-  const [syncLabel, setSyncLabel] = useState(isSupabaseConfigured ? 'sync: conectando...' : 'sync: local')
+  const [syncLabel, setSyncLabel] = useState(isSupabaseConfigured ? 'conectando...' : 'local')
   useEffect(()=>{
     const h = (e)=> {
       const s = e.detail?.status || e.detail?.queue ? `pendente ${e.detail.queue}` : e.detail?.status
-      if(s) setSyncLabel(`sync: ${s}`)
+      if(s) setSyncLabel(s)
     }
     window.addEventListener('sm-sync-status', h)
-    window.addEventListener('sm-respostas-updated', ()=> setSyncLabel('sync: atualizado'))
+    window.addEventListener('sm-respostas-updated', ()=> setSyncLabel('atualizado'))
     return ()=>{
       window.removeEventListener('sm-sync-status', h)
     }
@@ -33,9 +32,9 @@ export default function Layout({ children }) {
             <div className="sm:hidden text-xs text-slate-500">{config.trimestre} • {config.ano}</div>
           </Link>
           <nav className="flex items-center gap-1.5">
-            <span className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border font-medium ${isSupabaseConfigured ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+            <span className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border font-medium capitalize ${isSupabaseConfigured ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-              {isSupabaseConfigured ? 'Sincronizado' : 'Local'}
+              {isSupabaseConfigured ? (syncLabel === 'synced' ? 'Sincronizado' : syncLabel) : 'Local'}
             </span>
             <Link to="/" className={`px-3.5 py-2 rounded-full text-sm font-medium transition ${loc.pathname==='/'?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-100'}`}>Início</Link>
             <Link to="/admin" className={`px-3.5 py-2 rounded-full text-sm font-medium transition ${loc.pathname.startsWith('/admin')?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-100'}`}>Coordenação</Link>

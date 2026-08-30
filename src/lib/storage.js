@@ -65,15 +65,53 @@ export function setAlunos(v) { localStorage.setItem(KEYS.alunos, JSON.stringify(
 export function getRespostas() {
   try { return JSON.parse(localStorage.getItem(KEYS.respostas) || '[]') } catch { return [] }
 }
+
+/** Salva no localStorage com tratamento de cota excedida */
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value)
+  } catch (e) {
+    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      try { window.dispatchEvent(new CustomEvent('sm-storage-error', { detail: { key, message: 'Armazenamento local cheio. Exporte os dados e limpe algumas respostas.' } })) } catch {}
+      console.error('[SM] localStorage quota exceeded for key:', key)
+    } else {
+      throw e
+    }
+  }
+}
+
 export function setRespostas(v) {
-  localStorage.setItem(KEYS.respostas, JSON.stringify(v))
+  safeSetItem(KEYS.respostas, JSON.stringify(v))
+  // mantém cache em memória sincronizado
+  _respostasCache = null // invalida cache para próxima leitura
   try{ window.dispatchEvent(new CustomEvent('sm-respostas-updated', { detail: { count: v.length } })) }catch{}
+}
+
+// Cache em memória: evita condição de corrida no upsertResposta
+// O Map é a fonte de verdade; localStorage é o espelho persistido.
+// Chave composta: `turma|componente|trimestre|alunoNumero`
+let _respostasCache = null
+
+function getRespostasCache() {
+  if (!_respostasCache) {
+    _respostasCache = new Map()
+    const stored = getRespostas()
+    for (const r of stored) {
+      _respostasCache.set(`${r.turma}|${r.componente}|${r.trimestre}|${String(r.alunoNumero)}`, r)
+    }
+  }
+  return _respostasCache
+}
+
+/** Invalida o cache quando dados chegam de fonte externa (Supabase, importação CSV) */
+export function invalidateRespostasCache() {
+  _respostasCache = null
 }
 
 export function getConfig() {
   try { return JSON.parse(localStorage.getItem(KEYS.config) || JSON.stringify(DEFAULT_CONFIG)) } catch { return DEFAULT_CONFIG }
 }
-export function setConfig(v) { localStorage.setItem(KEYS.config, JSON.stringify(v)) }
+export function setConfig(v) { safeSetItem(KEYS.config, JSON.stringify(v)) }
 
 // helpers
 export function getAlunosByTurma(turma) {
@@ -88,11 +126,13 @@ export function withSkipSync(fn){
 }
 
 export function upsertResposta({ turma, componente, trimestre, alunoNumero, alunoNome, dados }) {
-  const all = getRespostas()
-  const idx = all.findIndex(r => r.turma===turma && r.componente===componente && r.trimestre===trimestre && String(r.alunoNumero)===String(alunoNumero))
+  const key = `${turma}|${componente}|${trimestre}|${String(alunoNumero)}`
   const entry = { turma, componente, trimestre, alunoNumero: String(alunoNumero), alunoNome, dados, updatedAt: new Date().toISOString() }
-  if (idx >= 0) { all[idx]=entry; } else { all.push(entry); }
-  setRespostas(all)
+  // escreve no cache em memória primeiro (sem race condition)
+  getRespostasCache().set(key, entry)
+  // persiste no localStorage a partir do cache
+  safeSetItem(KEYS.respostas, JSON.stringify([...getRespostasCache().values()]))
+  try{ window.dispatchEvent(new CustomEvent('sm-respostas-updated', { detail: entry })) }catch{}
   if(!_skipSync){
     // lazy import to avoid circular at top
     import('./supabase.js').then(m=>{
@@ -100,7 +140,6 @@ export function upsertResposta({ turma, componente, trimestre, alunoNumero, alun
         m.queueRespostaSync(entry)
       }
     }).catch(()=>{})
-    // dispatch storage-like event for same-tab listeners
     try{ window.dispatchEvent(new CustomEvent('sm-local-resposta', { detail: entry })) }catch{}
   }
 }
@@ -150,7 +189,7 @@ export function getRespostasByTurmaComponente(turma, componente, trimestre) {
 }
 
 // import helpers for alunos from CSV rows - robust via helpers.js
-import { normalizeRow, getField, detectTurmaFromHeader, extractAlunoInfo } from './helpers.js'
+import { normalizeRow, extractAlunoInfo, extractDados } from './helpers.js'
 
 export function importAlunosFromRows(rows, turmaDefault) {
   const alunosMap = new Map()
@@ -213,7 +252,7 @@ export function importAlunosFromRows(rows, turmaDefault) {
 }
 
 export function importRespostasFromRows(rows, fallbackTurma) {
-  let count=0
+  let count = 0
   for(const rawRow of rows){
     const row = normalizeRow(rawRow)
     const info = extractAlunoInfo(row, fallbackTurma)
@@ -226,39 +265,7 @@ export function importRespostasFromRows(rows, fallbackTurma) {
       if(al) numeroFinal = al.numero
       else continue
     }
-    const engajamentoImport = getField(row, 'Engajamento') || getField(row, 'Participação')|| getField(row, 'Participa')|| getField(row, 'Proatividade')||''
-    const organizacaoImport = getField(row, 'Organização') || getField(row, 'Organizacao') || getField(row, 'Cumprimento')|| getField(row, 'Colaboração')|| getField(row, 'Colaboracao')||''
-    const evolucaoImport = getField(row, 'Evolução') || getField(row, 'Evolucao') || getField(row, 'Progresso')||''
-    const bemEstarImport = getField(row, 'Bem-estar') || getField(row, 'Bem estar') || getField(row, 'Sinais de bem-estar')||''
-    const dados = {
-      aproveitamento: getField(row, 'Aproveitamento')||'',
-      engajamento: engajamentoImport,
-      organizacao: organizacaoImport,
-      concentracao: getField(row, 'Concentração')|| getField(row, 'Concentra')|| getField(row, 'Atenção')||'',
-      assiduidade: getField(row, 'Frequência')|| getField(row, 'Frequencia')|| getField(row, 'Assiduidade')||'',
-      convivencia: getField(row, 'Convivência')|| getField(row, 'Convivencia')||'',
-      bemEstar: bemEstarImport,
-      evolucao: evolucaoImport,
-      // legado mantido para leitura Geral antiga
-      participacao: getField(row, 'Participação')|| getField(row, 'Participa')||'',
-      cumprimento: getField(row, 'Cumprimento')||'',
-      colaboracao: getField(row, 'Colaboração')|| getField(row, 'Colaboracao')||'',
-      proatividade: getField(row, 'Proatividade')||'',
-      progresso: getField(row, 'Progresso')||'',
-      necessidade: getField(row, 'Necessidade de intervenção')|| getField(row, 'Necessidade')||'',
-      respostasPositivas: getField(row, 'Respostas positivas')||'',
-      observacoes: getField(row, 'Observações')|| getField(row, 'Observa')||'',
-      conversei: getField(row, 'Conversei')||'',
-      disciplinar: getField(row, 'Disciplinar')||'',
-      educacional: getField(row, 'Educacional')||'',
-      comunicado: getField(row, 'Comunicado')||'',
-      tirei: getField(row, 'Tirei de sala')||'',
-      naoIntervim: getField(row, 'Não realizei')|| getField(row, 'Nao realizei')||'',
-      reforco: getField(row, 'Encaminhado para aula')|| getField(row, 'reforço')|| getField(row, 'reforco')|| getField(row, 'Reforço de conteúdo')||'',
-      apoio: getField(row, 'Apoio')|| getField(row, 'socioemocional')||'',
-      familia: getField(row, 'Família')|| getField(row, 'Familia')|| getField(row, 'Conversa com família')||'',
-      motivo: getField(row, 'Motivo')||'',
-    }
+    const dados = extractDados(row)
     const has = Object.values(dados).some(v=> String(v).trim()!=='')
     if(!has) continue
     upsertResposta({ turma, componente, trimestre: trimestre||'2TRI', alunoNumero: String(numeroFinal), alunoNome: nome.toUpperCase(), dados })

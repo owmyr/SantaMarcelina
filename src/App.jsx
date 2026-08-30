@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { initStorage, getAlunos, getProfessores, bulkSetRespostasFromRemote, bulkSetAlunosFromRemote, bulkSetProfessoresFromRemote } from './lib/storage'
 import { seedMockDataCompleto } from './lib/mockData.js'
 import { isSupabaseConfigured, fetchAllFromSupabase, subscribeRespostas } from './lib/supabase.js'
@@ -11,7 +11,6 @@ import ProfessorHub from './pages/ProfessorHub'
 import Geral from './pages/Geral'
 
 export default function App(){
-  const [syncStatus, setSyncStatus] = useState(isSupabaseConfigured ? 'conectando...' : 'local (sem backend)')
   useEffect(()=>{
     initStorage()
     if(getAlunos().length===0){
@@ -19,34 +18,38 @@ export default function App(){
     } else if(getProfessores().length===0){
       seedMockDataCompleto({ comAmostra: false })
     }
+
+    const notifySync = (status) => {
+      try {
+        window.dispatchEvent(new CustomEvent('sm-sync-status', { detail: { status } }))
+      } catch {}
+    }
+
     // Hydrate do Supabase se configurado (mantém token= na URL)
     let unsub
     if(isSupabaseConfigured){
-      setSyncStatus('sincronizando...')
+      notifySync('sincronizando...')
       fetchAllFromSupabase().then(data=>{
         if(data){
           if(data.alunos?.length) bulkSetAlunosFromRemote(data.alunos)
           if(data.professores?.length) bulkSetProfessoresFromRemote(data.professores)
           if(data.respostas?.length) bulkSetRespostasFromRemote(data.respostas)
-          setSyncStatus(`sincronizado • ${data.respostas?.length||0} fichas`)
+          notifySync(`sincronizado • ${data.respostas?.length||0} fichas`)
         } else {
-          setSyncStatus('local (erro hydrate)')
+          notifySync('local (erro hydrate)')
         }
       })
-      unsub = subscribeRespostas((entry)=>{
+      unsub = subscribeRespostas(()=>{
         // realtime: entry já aplicado via supabase.js -> bulk, aqui apenas força refresh via evento
         window.dispatchEvent(new CustomEvent('sm-respostas-updated'))
-        setSyncStatus('atualizado ao vivo')
+        notifySync('atualizado ao vivo')
       })
-      const statusHandler = (e)=> setSyncStatus(e.detail.status)
-      window.addEventListener('sm-sync-status', statusHandler)
       return ()=>{
         if(unsub) unsub()
-        window.removeEventListener('sm-sync-status', statusHandler)
       }
     } else {
       // fallback: escuta BroadcastChannel para sync entre abas
-      const bcHandler = ()=> setSyncStatus('local • sync entre abas ativo')
+      const bcHandler = ()=> notifySync('local • sync entre abas ativo')
       window.addEventListener('sm-respostas-updated', bcHandler)
       return ()=> window.removeEventListener('sm-respostas-updated', bcHandler)
     }
