@@ -10,7 +10,7 @@ export default function Layout({ children }) {
   const [syncLabel, setSyncLabel] = useState(isSupabaseConfigured ? 'conectando...' : 'local')
   useEffect(()=>{
     const h = (e)=> {
-      const s = e.detail?.status || e.detail?.queue ? `pendente ${e.detail.queue}` : e.detail?.status
+      const s = e.detail?.queue ? `pendente (${e.detail.queue})` : e.detail?.status
       if(s) setSyncLabel(s)
     }
     window.addEventListener('sm-sync-status', h)
@@ -32,7 +32,7 @@ export default function Layout({ children }) {
             <div className="sm:hidden text-xs text-slate-500">{config.trimestre} • {config.ano}</div>
           </Link>
           <nav className="flex items-center gap-1.5">
-            <span className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border font-medium capitalize ${isSupabaseConfigured ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+            <span className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border font-medium ${isSupabaseConfigured ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
               {isSupabaseConfigured ? (syncLabel === 'synced' ? 'Sincronizado' : syncLabel) : 'Local'}
             </span>
